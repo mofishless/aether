@@ -44,8 +44,8 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Unit tests
-        run: pnpm test
+      - name: Unit tests（含覆盖率门禁：核心包 lines/statements/functions ≥80%）
+        run: pnpm test --coverage
 
       - name: Spike（node:sqlite @ ELECTRON_RUN_AS_NODE）
         run: pnpm spike:node-sqlite

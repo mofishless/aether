@@ -8,6 +8,8 @@ coverage/
 # 测试产物
 playwright-report/
 test-results/
+# desktop daemon-lifecycle 测试的构建 scratch（每次全量测试后残留空目录）
+apps/desktop/.tmp/
 
 # Vite 缓存
 .vite/
