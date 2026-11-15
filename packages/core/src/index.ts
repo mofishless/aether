@@ -9,6 +9,32 @@ export type {
   WorkspaceStoreCreateInput,
   WorkspaceStorePatch,
 } from "./ports/workspace-store.port.js";
+export type {
+  ExecutionLogAppendInput,
+  ExecutionLogStore,
+} from "./ports/execution-log-store.port.js";
+
+// 执行日志管线（SYSTEM_DESIGN §4.4，P0-09）：原始先存、归一化可重放。
+// sink = daemon 内存缓冲定时/定量批量落库；replay = 旁路转换器重放 + 回填。
+export {
+  DEFAULT_FLUSH_INTERVAL_MS,
+  DEFAULT_FLUSH_THRESHOLD,
+  DEFAULT_MAX_QUEUED_PER_PROCESS,
+  DEFAULT_MAX_QUEUED_TOTAL,
+  ExecutionLogSink,
+} from "./execution-log/execution-log-sink.js";
+export type {
+  ExecutionLogSinkError,
+  ExecutionLogSinkOptions,
+  TimerHandle,
+  TimerHooks,
+} from "./execution-log/execution-log-sink.js";
+export { ExecutionLogReplayService } from "./execution-log/execution-log-replay.js";
+export type {
+  NormalizeLogsFn,
+  ReplayProcessOptions,
+  ReplayResult,
+} from "./execution-log/execution-log-replay.js";
 export { withProjectLock } from "./worktree/lock.js";
 export {
   branchNameFor,

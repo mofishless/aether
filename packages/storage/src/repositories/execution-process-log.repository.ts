@@ -23,6 +23,8 @@ export type ExecutionProcessLogPatch = Partial<Omit<ExecutionProcessLog, "id">>;
 
 const FIND_BY_ID_SQL = `SELECT * FROM ${TABLE} WHERE id = ?`;
 const FIND_ALL_SQL = `SELECT * FROM ${TABLE} ORDER BY rowid`;
+const FIND_BY_PROCESS_SQL = `SELECT * FROM ${TABLE} WHERE process_id = ? ORDER BY seq`;
+const UPDATE_NORMALIZED_SQL = `UPDATE ${TABLE} SET normalized_json = ? WHERE id = ?`;
 const INSERT_SQL = `INSERT INTO ${TABLE} (process_id, seq, raw_json, normalized_json, created_at) VALUES (?, ?, ?, ?, ?)`;
 const DELETE_SQL = `DELETE FROM ${TABLE} WHERE id = ?`;
 
@@ -114,6 +116,35 @@ export class ExecutionProcessLogRepository {
         table: TABLE,
         entityId: id,
         message: "无法读取进程日志",
+      });
+    }
+  }
+
+  /** 按进程读日志行序列（P0-09 重放路径）：seq 升序（走 idx_logs_process_seq）。 */
+  findByProcessId(processId: string): ExecutionProcessLog[] {
+    try {
+      const rows = this.db.prepare(FIND_BY_PROCESS_SQL).all(processId);
+      return rows.map(mapLogRow);
+    } catch (error) {
+      throw toStorageError(error, {
+        operation: "findByProcessId",
+        table: TABLE,
+        entityId: processId,
+        message: "无法读取进程日志序列",
+      });
+    }
+  }
+
+  /** 回填一行的 normalized_json（旁路转换缓存；行不存在静默无副作用，重放幂等）。 */
+  updateNormalized(id: number, normalizedJson: string): void {
+    try {
+      this.db.prepare(UPDATE_NORMALIZED_SQL).run(normalizedJson, id);
+    } catch (error) {
+      throw toStorageError(error, {
+        operation: "updateNormalized",
+        table: TABLE,
+        entityId: id,
+        message: "无法回填进程日志归一化结果",
       });
     }
   }
