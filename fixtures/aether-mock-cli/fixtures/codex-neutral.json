@@ -1,0 +1,15 @@
+{
+  "protocol": "codex-json-rpc",
+  "description": "Codex JSON-RPC 形状中性回放：按 method 匹配应答（initialize/turn）；不实现真实 Codex app-server 语义，P1-01 实测协议后在 fixtures 与 lib/codex-replay.mjs 扩展。",
+  "exitCode": 0,
+  "responses": [
+    {
+      "method": "initialize",
+      "result": { "mock": "init-ok" }
+    },
+    {
+      "method": "turn",
+      "result": { "mock": "turn-ok" }
+    }
+  ]
+}

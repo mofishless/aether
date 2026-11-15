@@ -1,0 +1,91 @@
+{
+  "protocol": "claude-stream-json",
+  "description": "标准任务旅程：init → assistant 文本 → tool_use → tool_result → result success（退出码 0）。P0-09/P0-12 复用基准。",
+  "exitCode": 0,
+  "events": [
+    {
+      "emit": {
+        "type": "system",
+        "subtype": "init",
+        "session_id": "ext-mock-happy",
+        "claude_code_version": "9.9.9-mock",
+        "model": "mock-model",
+        "cwd": "/wt/mock",
+        "tools": ["Bash", "Read"],
+        "permissionMode": "acceptEdits",
+        "slash_commands": [],
+        "mcp_servers": [],
+        "output_style": "default",
+        "skills": [],
+        "plugins": [],
+        "apiKeySource": "none"
+      }
+    },
+    {
+      "emit": {
+        "type": "assistant",
+        "message": {
+          "id": "msg_mock_1",
+          "role": "assistant",
+          "content": [{ "type": "text", "text": "mock：开始处理任务" }]
+        },
+        "parent_tool_use_id": null,
+        "uuid": "uuid_mock_1",
+        "session_id": "ext-mock-happy"
+      }
+    },
+    {
+      "emit": {
+        "type": "assistant",
+        "message": {
+          "id": "msg_mock_2",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_mock_1",
+              "name": "Bash",
+              "input": { "command": "echo aether", "description": "mock 工具调用" }
+            }
+          ]
+        },
+        "parent_tool_use_id": null,
+        "uuid": "uuid_mock_2",
+        "session_id": "ext-mock-happy"
+      }
+    },
+    {
+      "emit": {
+        "type": "user",
+        "message": {
+          "role": "user",
+          "content": [
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_mock_1",
+              "content": "aether",
+              "is_error": false
+            }
+          ]
+        },
+        "parent_tool_use_id": null,
+        "uuid": "uuid_mock_3",
+        "session_id": "ext-mock-happy"
+      }
+    },
+    {
+      "emit": {
+        "type": "result",
+        "subtype": "success",
+        "result": "mock 任务完成：happy-path 旅程回放完毕",
+        "is_error": false,
+        "duration_ms": 5,
+        "duration_api_ms": 5,
+        "num_turns": 1,
+        "session_id": "ext-mock-happy",
+        "usage": {},
+        "total_cost_usd": 0
+      }
+    }
+  ]
+}

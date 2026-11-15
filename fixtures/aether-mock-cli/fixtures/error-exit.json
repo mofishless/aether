@@ -1,0 +1,52 @@
+{
+  "protocol": "claude-stream-json",
+  "description": "非零退出路径：帧流自报 success，但脚本声明 exitCode=3——验证适配器排序契约（退出证明先判非零 → error 事件，而非干净收敛的 session 终态）。",
+  "exitCode": 3,
+  "events": [
+    {
+      "emit": {
+        "type": "system",
+        "subtype": "init",
+        "session_id": "ext-mock-err",
+        "claude_code_version": "9.9.9-mock",
+        "model": "mock-model",
+        "cwd": "/wt/mock",
+        "tools": [],
+        "permissionMode": "plan",
+        "slash_commands": [],
+        "mcp_servers": [],
+        "output_style": "default",
+        "skills": [],
+        "plugins": [],
+        "apiKeySource": "none"
+      }
+    },
+    {
+      "emit": {
+        "type": "assistant",
+        "message": {
+          "id": "msg_mock_err",
+          "role": "assistant",
+          "content": [{ "type": "text", "text": "mock：即将以非零退出码退出" }]
+        },
+        "parent_tool_use_id": null,
+        "uuid": "uuid_mock_err",
+        "session_id": "ext-mock-err"
+      }
+    },
+    {
+      "emit": {
+        "type": "result",
+        "subtype": "success",
+        "result": "mock 自报成功但进程将以 code=3 退出",
+        "is_error": false,
+        "duration_ms": 2,
+        "duration_api_ms": 2,
+        "num_turns": 1,
+        "session_id": "ext-mock-err",
+        "usage": {},
+        "total_cost_usd": 0
+      }
+    }
+  ]
+}

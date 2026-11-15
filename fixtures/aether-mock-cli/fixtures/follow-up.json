@@ -1,0 +1,52 @@
+{
+  "protocol": "claude-stream-json",
+  "description": "follow-up 轮次（--resume 语义）：mock CLI 无状态，回放本脚本即可；init 帧复用 happy-path 的 externalSessionId，assistant 文本以 $MOCK_ARGV 回显收到的 argv（断言第二轮 spawn 带 --resume ext-mock-happy）。",
+  "exitCode": 0,
+  "events": [
+    {
+      "emit": {
+        "type": "system",
+        "subtype": "init",
+        "session_id": "ext-mock-happy",
+        "claude_code_version": "9.9.9-mock",
+        "model": "mock-model",
+        "cwd": "/wt/mock",
+        "tools": [],
+        "permissionMode": "acceptEdits",
+        "slash_commands": [],
+        "mcp_servers": [],
+        "output_style": "default",
+        "skills": [],
+        "plugins": [],
+        "apiKeySource": "none"
+      }
+    },
+    {
+      "emit": {
+        "type": "assistant",
+        "message": {
+          "id": "msg_mock_followup",
+          "role": "assistant",
+          "content": [{ "type": "text", "text": "resume argv: $MOCK_ARGV" }]
+        },
+        "parent_tool_use_id": null,
+        "uuid": "uuid_mock_followup",
+        "session_id": "ext-mock-happy"
+      }
+    },
+    {
+      "emit": {
+        "type": "result",
+        "subtype": "success",
+        "result": "mock follow-up 完成",
+        "is_error": false,
+        "duration_ms": 3,
+        "duration_api_ms": 3,
+        "num_turns": 1,
+        "session_id": "ext-mock-happy",
+        "usage": {},
+        "total_cost_usd": 0
+      }
+    }
+  ]
+}
