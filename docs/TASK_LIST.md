@@ -128,7 +128,7 @@ export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stoppe
 - 验收：渲染全部数据经类型化通道获取；主进程 import 领域模块即 CI 失败。
 - 依赖：P0-02、P0-03。TDD：先写 Playwright 冒烟：启动 app → 连接 daemon → 显示连接状态；再写 import 边界静态检查测试。
 
-### P0-11 最小驾驶舱 UI — L
+### P0-11 最小驾驶舱 UI — L ✅（2026-11-15 完成：双线并行——线1 daemon：contracts 扩展静态 topic payload schema + tasks.list/sessions.list/sessions.listEvents、agents 服务（spawn 校验→worktree 缺省建→session/process 行（kind 归属 P0-10 遗留闭环）→adapter.spawn、事件泵一路三发：logSink 落库 + session.events 推送 + 状态机 fold 投影 agent.status/task.updated、进程注册表 + requestId 反查、followUp/cancel/permission.respond）、catalog/diff RPC（core 新增 worktree/diff.ts 三点 diff）、subscribe cursor 有界环形重放 + per-topic 过滤（P0-10 遗留闭环）、warmup 孤儿收口（P0-10 遗留闭环）；线2 desktop：zustand app-store（事件流/权限队列/diff 缓存/§8.1 本地镜像折叠）、六视图组件（ProjectList/TaskList/AgentCard/SpawnAgentPanel/ActivityView/DiffView）、launcher AETHER_DAEMON_DB_PATH userData 策略 + AETHER_AGENT_CLI_PATH 透传（P0-10 遗留闭环）；gate 合跑修 7 处（4 处双线契约对账：tasks.list 未挂载/agentProfileId 必填/processId 必填/diff 口径矛盾、React #185 无限重渲染熔断、断言字符串、lint）；spec-review 处置：running 中途态断言补齐（happy-path-slow fixture 5000ms 挂起窗口）、waitForSessionVisible 静默失败置错、subscribe 注释纠偏、权限应答失败重入队；E2E 5/5 三复跑绿（全旅程含 running 观测+diff 非空+跟问响应+权限批准，mock CLI fixture 驱动）；全仓 623 测试（+63）；SDK 原始行流缝不开（归一化 ProviderEvent 落库路径已覆盖重放，deviations 定案））
 
 - 产出物：项目列表/新建、任务列表/新建（看板交互在 P1）、agent 卡片（状态点+耗时）、agent 活动视图（`session.<id>.events` 结构化事件流渲染：assistant 消息/工具调用 + 跟问输入框 + permission_request 批准弹层）、diff 视图（worktree 分支 vs 主分支，unified 单栏；并排高亮移 P1-03）、"启动 agent"（任务→worktree→Claude）。
 - 验收：P0 里程碑全旅程仅靠 UI 完成（见 §1 P0 行）。
