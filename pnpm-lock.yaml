@@ -97,6 +97,12 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/process-host:
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   packages/storage:
     dependencies:
       '@aether/contracts':

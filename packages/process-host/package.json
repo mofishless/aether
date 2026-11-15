@@ -1,0 +1,17 @@
+{
+  "name": "@aether/process-host",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Subprocess host & governance: tracked spawn, process-group tree kill, PID-level exit proof, Windows hidden console & .cmd quoting (SYSTEM_DESIGN §2/§3, P0-06).",
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
