@@ -56,7 +56,7 @@ graph LR
 - 验收：`pnpm test / typecheck / lint` 全绿；CI 双平台冒烟通过；空 Electron 应用可启动。
 - 依赖：无。TDD：先写一个恒真 vitest 用例 + Electron 启动冒烟用例，验证"红→绿"基线链路本身可用。
 
-### P0-02 类型化契约包 `@aether/contracts` — M
+### P0-02 类型化契约包 `@aether/contracts` — M ✅（2026-11-15 完成：7 源模块、111 测试全绿；TDD RED→GREEN 全程；spec-review 3 findings 已修——extraHeaders 值级密钥防线、EventEnvelope strict、实体时间戳收紧 z.iso.datetime()）
 
 - 产出物：RPC 方法类型（daemon↔渲染唯一边界）、领域命令/事件类型、`AgentStatus` 枚举与 zod schema 单一来源（T3 契约包模式，见调研 05.B）。
 - 验收：渲染与 daemon 只 import contracts，无重复定义；schema 变更引起双向类型检查失败。
@@ -75,7 +75,7 @@ export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stoppe
 - 依赖：P0-01、P0-02。TDD：先写集成测试：spawn → 握手成功 → 心跳超时判定 → kill → 自动重启 → 再次握手。
 - ⚠风险：Windows 子进程 stdio/管道行为差异（调研 06 §9.1 关联）。
 
-### P0-04 SQLite 存储层与迁移链 — M
+### P0-04 SQLite 存储层与迁移链 — M ✅（2026-11-15 完成：v1 迁移链 8 表 5 索引 + 8 仓库、34 测试全绿；spec-review 5 findings 已修——崩溃恢复测试（强杀子进程 WAL 恢复）、seed ensure-exists 语义文档化并测试锁定、外键/CHECK 约束负例、移除未使用的 zod 依赖）
 
 - 产出物：SQLite 单库（WAL）+ 迁移链框架；核心表照 VK 模型（调研 05.C），表名统一单数：`project / task / workspace / session / execution_process / execution_process_log`；首次运行种子：默认 claude-sdk `provider_config` + 默认 `agent_profile`。Orca 编排表（mailbox 等）到 P2 再加迁移。
 - 验收：全新库自动迁移到最新；旧库逐级升级不丢数据；崩溃后 WAL 恢复。
