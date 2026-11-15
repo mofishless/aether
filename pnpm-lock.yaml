@@ -60,9 +60,6 @@ importers:
       '@aether/contracts':
         specifier: workspace:*
         version: link:../contracts
-      zod:
-        specifier: ^4.6.7
-        version: 4.6.7
     devDependencies:
       typescript:
         specifier: ^7.0.2
