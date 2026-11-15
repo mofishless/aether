@@ -68,7 +68,7 @@ graph LR
 export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stopped" | "error";
 ```
 
-### P0-03 daemon 子进程生命周期 — M
+### P0-03 daemon 子进程生命周期 — M ✅（2026-11-15 完成：apps/daemon WS JSON-RPC 服务器 37 测试 + desktop 启动器/监护（spawn/握手/心跳/SIGKILL<3s 自动重启/优雅退出）；boundary 静态检查 + E2E kill-daemon 用例；spec-review 6 findings 已修——相对路径绕过守卫、重启风暴退避、stop 宽限竞速、心跳时延断言、token 校验措辞收口（每连接握手校验）、测试桥环境门禁）
 
 - 产出物：`apps/daemon` 独立进程（可无头运行）；Electron 主进程以 T3 DesktopBackendManager 式拉起（调研 05.B）：握手、心跳、健康检查、优雅退出、崩溃自动重启。
 - 验收：SIGKILL daemon 后 Electron 3 秒内检测并重启、状态恢复查询正常；主进程无领域逻辑（CI 静态检查 import 边界）。
@@ -82,7 +82,7 @@ export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stoppe
 - 依赖：P0-01。TDD：先写迁移测试（v0→vN 逐级 + 幂等）、repository CRUD 测试、双连接并发写测试。
 - 备注：驱动已定 `node:sqlite`（P0-01 spike 已通过 2026-11-15：Electron 45.3.2 / 内置 Node 24.22.2，无回退）。
 
-### P0-05 Git worktree 生命周期 — L
+### P0-05 Git worktree 生命周期 — L ✅（2026-11-15 完成：packages/core @aether/core，WorkspaceStore 依赖倒置端口 + 持久预留先行 + 按路径锁 + 崩溃两阶段恢复 + 孤儿对账（含 ready 行外删标 orphaned），26 测试；spec-review 7 findings 已修——win32 路径归一防误删（major）、预留入锁、orphaned 入口、archived 注释、残留分支回收、幂等零告警、脏主 checkout 测试）
 
 - 产出物：daemon 内 Git 服务：worktree 创建/删除/清理（根目录 = 项目同级 `.aether-worktrees/`，repo 外、不弄脏主 checkout；不可写时回退 `userData/aether/worktrees/<id>`）、分支命名、按路径全局锁（VK 做法，调研 05.C）、启动前准备（`.env` 拷贝；仅探测 npm/pnpm 并异步提示不阻塞——依赖安装治理移 P1-12）、孤儿清理（启动时 + 周期；workspace 状态引用 `@aether/contracts` 七值 `WorkspaceStatus`：reserved/creating/ready/archived/deleting/failed/orphaned，崩溃恢复扫描 creating/deleting/orphaned）。
 - 验收：崩溃中途（已写库行未动 Git / 已动 Git 未回写）重启后能清理或补建，主 checkout 永远干净。
