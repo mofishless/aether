@@ -9,13 +9,20 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@aether/adapter-claude": "workspace:*",
     "@aether/contracts": "workspace:*",
+    "@aether/core": "workspace:*",
+    "@aether/storage": "workspace:*",
+    "@aether/terminal": "workspace:*",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.325",
+    "node-pty": "1.1.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "@types/ws": "^8.18.0",
     "tsup": "^8.5.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "zod": "^4.6.7"
   }
 }

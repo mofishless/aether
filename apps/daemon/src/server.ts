@@ -1,7 +1,8 @@
-// WS 服务器装配：ws 库 + 握手状态机 + RPC 路由。绑定 127.0.0.1:0（随机端口，§5.1）。
+// WS 服务器装配：ws 库 + 握手状态机 + RPC 路由 + 事件推送订阅。绑定 127.0.0.1:0（随机端口，§5.1）。
 // 进程退出策略不在此层（可测性）：shutdown 由入口/测试驱动，onShutdownRequested 只回调通知。
 import { WebSocket, WebSocketServer, type RawData } from "ws";
 import { PROTOCOL_VERSION } from "@aether/contracts";
+import type { DaemonAssembly } from "./assembly/assembly.js";
 import { CLOSE_CODES } from "./close-codes.js";
 import { validateHello, type DaemonVersions } from "./handshake.js";
 import { blockEventLoopForever } from "./hang.js";
@@ -18,6 +19,8 @@ export interface DaemonServerOptions {
   readonly helloTimeoutMs?: number;
   /** --hang-signal：握手 welcome 帧写完后真阻塞事件循环（阶段 2 心跳超时 fixture） */
   readonly hangAfterHandshake?: boolean;
+  /** P0-10 组装根：注入后 terminals.* 组与 subscribe 可用，且 hello 通过的连接订阅事件推送 */
+  readonly assembly?: DaemonAssembly;
   /** system.shutdown 的 Success 帧写完后触发（入口在此执行优雅退出） */
   readonly onShutdownRequested?: () => void;
 }
@@ -36,6 +39,7 @@ interface ConnectionContext {
   readonly hangAfterHandshake: boolean;
   readonly versions: DaemonVersions;
   readonly routerDeps: RouterDeps;
+  readonly assembly: DaemonAssembly | undefined;
   readonly onShutdownRequested: (() => void) | undefined;
 }
 
@@ -48,15 +52,21 @@ function setupConnection(context: ConnectionContext): void {
     hangAfterHandshake,
     versions,
     routerDeps,
+    assembly,
     onShutdownRequested,
   } = context;
   const state = { authenticated: false };
+
+  // hello 通过后订阅事件推送（§5.4 最小落地：全量广播，见 event-bus.ts 定案注释）。
+  // 帧只在连接 OPEN 时发送；发送失败视为连接垂死，静默交由 close 清理。
+  let unsubscribeEvents: (() => void) | undefined;
 
   const helloTimer = setTimeout(() => {
     ws.close(CLOSE_CODES.HELLO_TIMEOUT, "hello timeout");
   }, helloTimeoutMs);
   ws.on("close", () => {
     clearTimeout(helloTimer);
+    unsubscribeEvents?.();
   });
   // 客户端中途断连属正常（窗口关闭等），不视为服务器错误
   ws.on("error", () => undefined);
@@ -81,6 +91,17 @@ function setupConnection(context: ConnectionContext): void {
     }
     clearTimeout(helloTimer);
     state.authenticated = true;
+    // 先注册推送订阅再回 welcome：welcome 仍是首帧（同一段同步流程内不可能插入事件发布）
+    unsubscribeEvents = assembly?.eventBus.addListener((frame) => {
+      if (ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      try {
+        ws.send(frame);
+      } catch {
+        // 发送失败 = 连接垂死：静默，清理交给 close 事件
+      }
+    });
     if (hangAfterHandshake) {
       // send 回调 = welcome 帧已写入 socket（客户端能收到）；随后真阻塞：
       // 不再回任何帧/不处理关闭，供阶段 2 心跳超时判定
@@ -109,6 +130,7 @@ export function startDaemonServer(options: DaemonServerOptions): Promise<DaemonS
     token,
     helloTimeoutMs = DEFAULT_HELLO_TIMEOUT_MS,
     hangAfterHandshake = false,
+    assembly,
     onShutdownRequested,
   } = options;
   const versions: DaemonVersions = {
@@ -118,6 +140,11 @@ export function startDaemonServer(options: DaemonServerOptions): Promise<DaemonS
   const routerDeps: RouterDeps = {
     daemonVersion: DAEMON_VERSION,
     protocolVersion: PROTOCOL_VERSION,
+    // exactOptionalPropertyTypes：装配存在时才挂 terminals/subscribe 依赖
+    ...(assembly !== undefined && {
+      terminals: assembly.terminalPool,
+      events: assembly.eventBus,
+    }),
   };
 
   const wss = new WebSocketServer({ host: "127.0.0.1", port: 0 });
@@ -144,6 +171,7 @@ export function startDaemonServer(options: DaemonServerOptions): Promise<DaemonS
         hangAfterHandshake,
         versions,
         routerDeps,
+        assembly,
         onShutdownRequested,
       });
     });

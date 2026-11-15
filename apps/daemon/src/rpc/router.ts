@@ -1,5 +1,7 @@
 // RPC 路由（纯函数）：JSON-RPC 2.0 envelope 解析（复用 contracts schema，禁止重复定义）
-// + system 组三方法分派。无 IO、无状态——ws 层负责收发，此处只决定"回什么/要不要副作用"。
+// + system 组三方法 + terminals.*（P0-10）+ subscribe 分派。无 IO、无状态——
+// ws 层负责收发，此处只决定"回什么/要不要副作用"。
+import { z } from "zod";
 import {
   JSON_RPC_ERROR_CODES,
   JsonRpcNotificationSchema,
@@ -8,11 +10,18 @@ import {
   type JsonRpcRequest,
   type JsonRpcSuccessResponse,
 } from "@aether/contracts";
+import type { TerminalPool } from "@aether/terminal";
+import type { EventBus } from "../events/event-bus.js";
 import { errorResponse, successResponse, type JsonRpcId } from "./respond.js";
+import { handleTerminalsRequest, isTerminalsMethod } from "./terminals.js";
 
 export interface RouterDeps {
   readonly daemonVersion: string;
   readonly protocolVersion: number;
+  /** terminals.* 装配依赖（P0-10）：缺省时这些方法回 METHOD_NOT_FOUND（骨架行为不变） */
+  readonly terminals?: TerminalPool;
+  /** subscribe 装配依赖（事件水位）：缺省时回 METHOD_NOT_FOUND */
+  readonly events?: EventBus;
 }
 
 export type RouteOutcome =
@@ -31,6 +40,20 @@ function responseOutcome(response: AnyResponse): RouteOutcome {
 function shutdownOutcome(response: AnyResponse): RouteOutcome {
   return { kind: "response-and-shutdown", frame: JSON.stringify(response) };
 }
+
+function methodNotFoundOutcome(id: JsonRpcId, method: string): RouteOutcome {
+  return responseOutcome(
+    errorResponse(id, JSON_RPC_ERROR_CODES.METHOD_NOT_FOUND, `Method not found: ${method}`),
+  );
+}
+
+/** subscribe 参数（contracts rpc.ts 签名）：topics 非空、cursor 非负整数 */
+const SubscribeParamsSchema = z
+  .object({
+    topics: z.array(z.string().min(1)).min(1),
+    cursor: z.number().int().nonnegative().optional(),
+  })
+  .strict();
 
 /** malformed envelope 的兜底 id：能安全取到 string|number 就回显，否则 null（规范允许） */
 function extractRawId(parsed: unknown): JsonRpcId {
@@ -78,9 +101,39 @@ function dispatchRequest(request: JsonRpcRequest, deps: RouterDeps): RouteOutcom
     return shutdownOutcome(successResponse(id, null));
   }
 
-  return responseOutcome(
-    errorResponse(id, JSON_RPC_ERROR_CODES.METHOD_NOT_FOUND, `Method not found: ${method}`),
-  );
+  // terminals.*（P0-10 装配挂接）：未装配 → METHOD_NOT_FOUND（骨架 deps 向后兼容）
+  if (isTerminalsMethod(method)) {
+    if (deps.terminals === undefined) {
+      return methodNotFoundOutcome(id, method);
+    }
+    return handleTerminalsRequest(request, deps.terminals);
+  }
+
+  if (method === "subscribe") {
+    if (deps.events === undefined) {
+      return methodNotFoundOutcome(id, method);
+    }
+    if (params === undefined) {
+      return responseOutcome(
+        errorResponse(id, JSON_RPC_ERROR_CODES.INVALID_PARAMS, "subscribe 需要参数对象"),
+      );
+    }
+    const parsed = SubscribeParamsSchema.safeParse(params);
+    if (!parsed.success) {
+      return responseOutcome(
+        errorResponse(
+          id,
+          JSON_RPC_ERROR_CODES.INVALID_PARAMS,
+          `subscribe 参数非法：${parsed.error.message}`,
+        ),
+      );
+    }
+    // P0-10 定案：无重放缓冲——应答当前水位即「从现在开始推送」；带 cursor 的
+    // 断线重放与 per-topic 过滤随 P0-11 有界内存缓冲（水位 TBD-9）落地。
+    return responseOutcome(successResponse(id, { cursor: deps.events.currentSeq }));
+  }
+
+  return methodNotFoundOutcome(id, method);
 }
 
 /**
