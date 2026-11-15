@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { DatabaseSync } from "node:sqlite";
-// 相对路径引入 storage 源（@aether/storage 不是本包依赖；测试专用集成缝，
-// 避免为本卡改动 adapter package.json / lockfile——P0-10 daemon 落位后归位）。
+// @aether/storage 已归位为本包 devDependencies（P0-10）：测试专用集成缝，
+// 运行时依赖方向不变（adapter 不依赖 storage，见 package.json 注释位）。
 import {
   AgentProfileRepository,
   ExecutionProcessLogRepository,
@@ -12,7 +12,7 @@ import {
   TaskRepository,
   WorkspaceRepository,
   openStorage,
-} from "../../../storage/src/index.js";
+} from "@aether/storage";
 import type { ProviderEvent } from "@aether/contracts";
 import {
   ExecutionLogReplayService,

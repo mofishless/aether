@@ -47,6 +47,8 @@ export type TopicPattern =
   | "session.<id>.state"
   /** 终端增量帧（§7.3） */
   | "terminal.<id>.output"
+  /** 终端退出帧（§7.3 exit；P0-10 daemon 组装补充） */
+  | "terminal.<id>.exit"
   /** 新日志行通知（拉取或内联） */
   | "process.<id>.logs";
 
@@ -65,6 +67,11 @@ export function sessionStateTopic(sessionId: string): string {
 /** 构造具体 topic：terminal.<id>.output */
 export function terminalOutputTopic(terminalId: string): string {
   return `terminal.${terminalId}.output`;
+}
+
+/** 构造具体 topic：terminal.<id>.exit */
+export function terminalExitTopic(terminalId: string): string {
+  return `terminal.${terminalId}.exit`;
 }
 
 /** 构造具体 topic：process.<id>.logs */

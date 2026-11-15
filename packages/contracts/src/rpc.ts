@@ -111,6 +111,8 @@ export interface SessionHandle {
 /** terminals.create 返回的终端句柄 —— P0 占位，随 P0-08 细化 */
 export interface TerminalHandle {
   terminalId: string;
+  /** PTY 子进程 pid（P0-10 daemon 组装细化：创建成功即有值） */
+  pid?: number;
 }
 
 export type DiffFileStatus = "added" | "modified" | "deleted";
