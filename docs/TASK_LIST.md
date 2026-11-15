@@ -116,7 +116,7 @@ export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stoppe
 - 依赖：P0-03、P0-06。TDD：先写 PTY 会话生命周期测试（create/write/read/resize/dispose 断言资源释放）与 UTF-8 编码测试。
 - ⚠风险：Windows 终端全家桶——ConPTY 预热、`.cmd` 引号、隐藏控制台（调研 06 §9.1；AgentsRoom 40+ 版在修终端，见调研 README 公理 6）。
 
-### P0-09 会话日志管道 — S
+### P0-09 会话日志管道 — S ✅（2026-11-15 完成：core ExecutionLogSink——append 同步入队即返（热路径零 DB 触达），200ms/500 行单事务批量 flush（定时器惰性启动/队空即停/unref 不吊进程），flush 失败整批 onError 清队（不重试不静默），背压超限拒绝新行不挖 seq 洞（10k/进程、50k 总量）；ExecutionLogReplayService——raw 行序列→注入 normalizeLogs 全流归一化（返回值=在线直出对账口径）→逐行回填 normalized_json（行级缓存）→sessionIdOverride 归属修正（P0-10 daemon 接线）；ExecutionLogStore 依赖倒置端口（storage 补 findByProcessId/updateNormalized 结构同形零适配注入）；集成测试 mock-cli fixture 全管线（验收①②）+ 真实定时器压测 12k 行 <1s 入队/状态机穿插 <10ms + 真实 storage 查询时延有界（验收③，spec-review 补测：node:sqlite 同步 API 下穿插 findByProcessId <200ms）；32+1 新测试；定案：1MiB 截断与保留策略留 P0-10+ 接口缝、daemon 崩溃续灌 seq 续号 P0-10 兜底）
 
 - 产出物：`execution_process_log` JSONL 原样落库 + 每 provider 一个 `normalizeLogs` 旁路转换器（VK 做法：原始先存、归一化可重放，调研 05.C）。
 - 验收：同一份原始日志可重放归一化；vendor 格式变更只改一个转换器（用 fixture 演示）；日志写路径压测：万行/秒灌入不阻塞状态机事件与查询。
