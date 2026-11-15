@@ -25,7 +25,9 @@ test("空 Electron 应用可启动并创建窗口", async () => {
   const window: Page = await app.firstWindow();
 
   await expect(window).toHaveTitle("Aether");
-  await expect(window.locator("#app")).toContainText("Aether");
+  // P0-10 起 #app 由 React 骨架挂载：连接徽标可见即渲染管线活着（数据通道细节由 connection.spec 验证）
+  await expect(window.locator("#app")).toBeVisible();
+  await expect(window.locator('[data-testid="connection-badge"]')).toBeVisible();
   // 生产默认（未设 AETHER_TEST_BRIDGE）：测试桥不注册，渲染进程摸不到 aetherTest
   const testBridgeExposed = await window.evaluate(() => "aetherTest" in window);
   expect(testBridgeExposed).toBe(false);

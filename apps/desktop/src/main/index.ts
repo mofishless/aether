@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { createDaemonSupervisor } from "./daemon/supervisor.js";
+import { DAEMON_ENDPOINT_CHANNEL } from "./renderer-bridge.js";
 import { isTestBridgeEnabled, TEST_BRIDGE_DAEMON_STATUS_CHANNEL } from "./test-bridge.js";
 
 // 主进程零领域逻辑（SYSTEM_DESIGN §1.2）：窗口生命周期 + daemon 拉起监护（launcher，P0-03）
@@ -20,6 +21,10 @@ const supervisor = createDaemonSupervisor({
     }
   },
 });
+
+// daemon endpoint 查询通道（P0-10 生产通道，非测试桥）：渲染层每次（重）连前 invoke，
+// 拿当前 port/token 直连 daemon WS。生命周期管理之外零逻辑——只透传 supervisor 快照面。
+ipcMain.handle(DAEMON_ENDPOINT_CHANNEL, () => supervisor.getEndpoint());
 
 // 测试桥（仅测试用途，命名带 aether:test: 前缀）：E2E 读 supervisor 状态快照。
 // 门禁（spec-review #6）：仅 AETHER_TEST_BRIDGE=1 时注册；生产默认通道不存在，

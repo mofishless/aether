@@ -1,10 +1,15 @@
 import { contextBridge, ipcRenderer } from "electron";
+import { DAEMON_ENDPOINT_CHANNEL, type DaemonEndpointInfo } from "../main/renderer-bridge.js";
 import { isTestBridgeEnabled, TEST_BRIDGE_DAEMON_STATUS_CHANNEL } from "../main/test-bridge.js";
 
-// 渲染进程通往主进程的唯一入口（P0-10 起经 contracts 直连 daemon，preload 只保留壳层桥）。
+// 渲染进程通往主进程的唯一入口（P0-10）：daemon endpoint 查询 + 壳层信息。
+// 渲染层拿 daemon 数据一律直连 WS（contracts 契约），不经主进程转发。
 const bridge = {
   platform: process.platform,
   electronVersion: process.versions.electron,
+  /** 当前 daemon endpoint（非 ready 期 null）；渲染层每次（重）连前重新查询，不缓存 */
+  getDaemonEndpoint: (): Promise<DaemonEndpointInfo | null> =>
+    ipcRenderer.invoke(DAEMON_ENDPOINT_CHANNEL) as Promise<DaemonEndpointInfo | null>,
 };
 
 contextBridge.exposeInMainWorld("aether", bridge);

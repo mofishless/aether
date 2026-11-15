@@ -61,6 +61,8 @@ export interface DaemonSupervisor {
   /** 优雅停止并 resolve；幂等（重复调用复用同一 promise） */
   stop(): Promise<void>;
   getStatus(): DaemonSupervisorStatus;
+  /** 当前连接端点（供渲染层经 preload 直连 daemon）；非 ready 期返回 null */
+  getEndpoint(): { readonly port: number; readonly token: string } | null;
   /** system.health RPC（监护自检，非领域逻辑） */
   health(): Promise<{ readonly ok: boolean }>;
 }
@@ -115,6 +117,7 @@ export function createDaemonSupervisor(options: DaemonSupervisorOptions): Daemon
   // 固有的可变运行时状态（同 daemon 服务器层做法：最小局部可变量 + 不可变快照外发）
   let pid: number | null = null;
   let port: number | null = null;
+  let activeToken: string | null = null; // 当前 attempt 的握手 token（getEndpoint 供渲染层直连）
   let restartCount = 0;
   let consecutiveFailures = 0;
   let lastError: string | null = null;
@@ -179,6 +182,7 @@ export function createDaemonSupervisor(options: DaemonSupervisorOptions): Daemon
       lastError: reason,
       consecutiveFailures,
     });
+    activeToken = null;
     // 退避窗口内 cycleActive 保持置位（迟到 scheduleRestart 判单飞忽略）；
     // stop() 落在窗口内时由 launch 的 stopping 检查收尾，不产生额外 spawn。
     void (waitMs > 0 ? delay(waitMs) : Promise.resolve()).then(() => {
@@ -233,6 +237,7 @@ export function createDaemonSupervisor(options: DaemonSupervisorOptions): Daemon
       spawned.kill();
       return null;
     }
+    activeToken = token;
 
     client.socket.on("close", () => {
       if (!stale()) scheduleRestart("daemon 连接关闭");
@@ -345,6 +350,7 @@ export function createDaemonSupervisor(options: DaemonSupervisorOptions): Daemon
       }
     }
 
+    activeToken = null;
     setStatus({ state: "stopped", pid: null, port: null });
   }
 
@@ -366,7 +372,13 @@ export function createDaemonSupervisor(options: DaemonSupervisorOptions): Daemon
     return attempt.client.request<{ ok: boolean }>("system.health");
   }
 
-  return { start, stop, getStatus: snapshot, health };
+  /** 当前连接端点（渲染层经 preload 直连用）；非 ready 期 port/token 未齐 → null */
+  function getEndpoint(): { readonly port: number; readonly token: string } | null {
+    if (port === null || activeToken === null) return null;
+    return { port, token: activeToken };
+  }
+
+  return { start, stop, getStatus: snapshot, getEndpoint, health };
 }
 
 /** 等 exit 与超时竞速；超时先到返回 null */
