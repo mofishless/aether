@@ -122,7 +122,7 @@ export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stoppe
 - 验收：同一份原始日志可重放归一化；vendor 格式变更只改一个转换器（用 fixture 演示）；日志写路径压测：万行/秒灌入不阻塞状态机事件与查询。
 - 依赖：P0-04、P0-07。TDD：先写旁路转换器单测：fixture JSONL → 归一化事件序列。
 
-### P0-10 Electron 壳与渲染骨架 — M
+### P0-10 Electron 壳与渲染骨架 — M ✅（2026-11-15 完成：双线并行——线1 desktop：React 19.3.1+zustand 5.0.16 精确锁定、tsconfig 三段拆分（main/preload Node 规则 + renderer DOM 规则 jsx:react-jsx）、RPC 客户端（WS 直连 127.0.0.1 实证 TBD-3 无需退化方案，CSP connect-src 放行；hello/welcome 握手、JSON-RPC id 关联+超时+中文错误映射、指数退避 100→500ms、EventEnvelope strict 校验）、preload 最小 API（contextIsolation 不关）、三态连接徽标+版本徽标+事件计数骨架 UI、E2E 连接→SIGKILL→断开→自动恢复全旅程、渲染层 import 白名单边界（四类故障注入）；线2 daemon：组装根 createDaemonAssembly（openStorage+registerAdapter+TerminalPool+日志管线+ConPTY 预热 listening 后异步）、terminals.* 四方法 RPC（strict zod、kill 幂等定案）、EventBus（全局单调 seq、payload 双重出站校验、notification method="event" hello 后扇出）、subscribe 最小实现（水位应答，cursor 重放留 P0-11）；26+23 新测试 + E2E；spec-review 2 findings 已修——**major：渲染层事件帧解析与 daemon 推送 wire 格式矛盾（notification 帧被整帧 envelope 解析拒绝→事件通道死路径；routeFrame 加通知分支 + 测试改真实帧形状）**、minor：emit 归一化行透传重放（mapSdkMessage 不认 ProviderEvent 形态→静默 0 事件；replay 入口 safeParse 探测 + JSON 字符串解包 + 回归测试）；定案：SDK 原始行流缝 P0-11、daemon 优雅退出显式 process.exit(0)（ConPTY 句柄吊事件循环）、subscribe cursor 重放 P0-11、warmup 孤儿进程收口 P0-11）
 
 - 产出物：`apps/desktop`：窗口与布局框架（React）、走 contracts 的 RPC 客户端、主进程仅生命周期管理（零领域逻辑，T3 式，调研 05.B）。
 - 验收：渲染全部数据经类型化通道获取；主进程 import 领域模块即 CI 失败。
