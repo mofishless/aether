@@ -65,7 +65,8 @@ export type PermissionDecision = z.infer<typeof PermissionDecisionSchema>;
 // 约定：主键 uuid v4 字符串；时间一律 UTC ISO-8601 字符串；*_json 列以原始 JSON 字符串透传，
 // 需要结构化时由具体 schema（如 CustomProviderConfigSchema）parse。
 
-const isoTimestamp = z.string();
+/** UTC ISO-8601（Z 后缀）：storage 一律经 nowIso() 写入，与 EventEnvelope/ProviderEvent 的 z.iso.datetime() 校验力度一致 */
+const isoTimestamp = z.iso.datetime();
 
 export const ProjectSchema = z.object({
   id: z.string(),
