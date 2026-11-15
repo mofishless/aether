@@ -1,8 +1,32 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { createDaemonSupervisor } from "./daemon/supervisor.js";
+import { isTestBridgeEnabled, TEST_BRIDGE_DAEMON_STATUS_CHANNEL } from "./test-bridge.js";
 
-// P0-01 空壳窗口。领域逻辑（spawn daemon、RPC、worktree…）一律不进主进程——
-// daemon 拉起在 P0-03 落地（T3 DesktopBackendManager 式，见 SYSTEM_DESIGN §1.2）。
+// 主进程零领域逻辑（SYSTEM_DESIGN §1.2）：窗口生命周期 + daemon 拉起监护（launcher，P0-03）
+// + 测试桥 IPC。diff / Git / 状态推断一律在 daemon 子进程内。
+
+// daemon 入口锚点：app path = apps/desktop（dev 与打包前形态一致），产物在姊妹包的 dist。
+const daemonEntryPath = path.resolve(app.getAppPath(), "..", "daemon", "dist", "index.js");
+
+const supervisor = createDaemonSupervisor({
+  daemonEntryPath,
+  onStateChange: (status) => {
+    if (status.state === "reconnecting") {
+      console.error(
+        `[aether] daemon 重连中（restart=${status.restartCount}）：${status.lastError}`,
+      );
+    }
+  },
+});
+
+// 测试桥（仅测试用途，命名带 aether:test: 前缀）：E2E 读 supervisor 状态快照。
+// 门禁（spec-review #6）：仅 AETHER_TEST_BRIDGE=1 时注册；生产默认通道不存在，
+// 渲染端即使 invoke 也不会命中 handler。
+if (isTestBridgeEnabled()) {
+  ipcMain.handle(TEST_BRIDGE_DAEMON_STATUS_CHANNEL, () => supervisor.getStatus());
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -28,11 +52,36 @@ function createWindow(): void {
 app.whenReady().then(() => {
   createWindow();
 
+  // daemon 产物缺失时降级：console.warn 不 crash（E2E/开发前提是已 pnpm build）
+  if (existsSync(daemonEntryPath)) {
+    supervisor.start().catch((error: unknown) => {
+      console.error(`[aether] daemon 启动失败：${error instanceof Error ? error.message : error}`);
+    });
+  } else {
+    console.warn(
+      `[aether] daemon 入口不存在（${daemonEntryPath}），先执行 pnpm build；本次运行无 daemon`,
+    );
+  }
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
+});
+
+// 优雅退出：先停 daemon（system.shutdown → 2s 宽限 → SIGKILL 兜底）再真正退出
+let daemonStopRequested = false;
+app.on("before-quit", (event) => {
+  if (daemonStopRequested) return;
+  daemonStopRequested = true;
+  event.preventDefault();
+  void supervisor
+    .stop()
+    .catch(() => undefined)
+    .then(() => {
+      app.quit();
+    });
 });
 
 app.on("window-all-closed", () => {

@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @aether/desktop dev",
-    "build": "pnpm --filter @aether/desktop build",
+    "build": "pnpm --filter @aether/daemon build && pnpm --filter @aether/desktop build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "pnpm --filter @aether/desktop test:e2e",
