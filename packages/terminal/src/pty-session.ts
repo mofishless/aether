@@ -137,7 +137,15 @@ export function createPtySession(options: PtySpawnOptions): PtySession {
   (pty as unknown as EventEmitter).on("error", () => {});
 
   pty.onExit(({ exitCode, signal }) => {
-    settle({ exitCode: normalizeExitCode(exitCode, signal), signal: signal ?? null });
+    const signalNumber = signal ?? 0;
+    settle({
+      exitCode: normalizeExitCode(exitCode, signal),
+      // 致死信号归一（CI run #14 ubuntu 回归）：Linux native 正常退出报
+      // signal_code=0（ExitEvent 默认值，WIFSIGNALED 未设）而非 undefined——
+      // ?? 不会归 null，proof.signal 语义（null=无信号死）被打破；与
+      // normalizeExitCode 同判据归一，win32 ConPTY 报 undefined 同样归 null。
+      signal: signalNumber !== 0 ? signalNumber : null,
+    });
   });
 
   pty.onData((text: string) => {
