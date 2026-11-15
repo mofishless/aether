@@ -11,7 +11,7 @@ export const PROTOCOL_VERSION = 1 as const;
 export const ClientHelloSchema = z
   .object({
     type: z.literal("hello"),
-    /** 主进程 spawn daemon 时注入的一次性 token（argv/env），每帧校验 */
+    /** 主进程 spawn daemon 时注入的一次性 token（argv/env），每连接握手校验：hello 通过后同连接后续帧不再重复校验 */
     token: z.string().min(1),
     protocolVersion: z.number().int().positive(),
   })

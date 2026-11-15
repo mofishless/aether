@@ -62,7 +62,7 @@ flowchart LR
 - **主进程只做三件事**：窗口生命周期、把 daemon 拉起为子进程并传 token、应用更新。diff / Git / 状态推断全部在 daemon——即使主进程技术上够得着 Node API 也不准做（Environment 所有权模型，见调研 05.B #1）。
 - **daemon 可脱离 Electron 无头运行**：同一份代码将来直接服务 CLI / 集成测试场景（见调研 05.A #4）。MVP 取 T3 式"桌面子进程 + 契约包"，Orca 式终端独立 daemon 留给可靠性阶段（见调研 06 §1）。
 - **不做模型代理**：用户已付费的 CLI 订阅或自有 API key 是算力来源；Aether 从 PATH 检测 CLI、spawn 真实进程，不碰 token 转售（公理 1，见调研 README）。
-- **传输安全**：daemon 绑 `127.0.0.1` 随机端口，主进程 spawn 时经 argv/env 注入一次性 token，每帧校验（Orca hello+token、Happy bearer token 的做法，见调研 05.A/05.D）。
+- **传输安全**：daemon 绑 `127.0.0.1` 随机端口，主进程 spawn 时经 argv/env 注入一次性 token，每连接握手校验（WS 连接即认证域：回环绑定 + 逐连接鉴权下，与逐帧校验等价；Orca hello+token、Happy bearer token 的做法，见调研 05.A/05.D）。
 
 ## 2. Monorepo 目录结构（pnpm workspace）
 
