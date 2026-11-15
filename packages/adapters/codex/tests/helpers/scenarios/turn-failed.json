@@ -1,0 +1,17 @@
+{
+  "threadId": "thread-mock-failed",
+  "turnScripts": [
+    {
+      "steps": [
+        {
+          "do": "item",
+          "phase": "completed",
+          "item": { "type": "agentMessage", "id": "item-msg-1", "text": "即将失败" }
+        },
+        { "do": "error", "willRetry": false, "message": "配额耗尽（不重试）" }
+      ],
+      "completedStatus": "failed",
+      "turnErrorMessage": "配额耗尽（不重试）"
+    }
+  ]
+}

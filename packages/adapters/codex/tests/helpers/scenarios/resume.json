@@ -1,0 +1,44 @@
+{
+  "threadId": "thread-mock-resume",
+  "resumeTurns": [
+    {
+      "id": "turn-hist-1",
+      "status": "completed",
+      "startedAt": "2026-01-01T00:00:01.000Z",
+      "completedAt": "2026-01-01T00:00:05.000Z",
+      "items": [
+        { "type": "agentMessage", "id": "hist-msg-1", "text": "历史消息一" },
+        { "type": "reasoning", "id": "hist-reasoning-1", "text": "历史推理摘要" },
+        {
+          "type": "commandExecution",
+          "id": "hist-cmd-1",
+          "command": "git status",
+          "exitCode": 0,
+          "aggregatedOutput": "clean"
+        }
+      ]
+    },
+    {
+      "id": "turn-hist-2",
+      "status": "completed",
+      "startedAt": "2026-01-01T00:01:00.000Z",
+      "completedAt": "2026-01-01T00:01:09.000Z",
+      "items": [
+        { "type": "plan", "id": "hist-plan-1", "text": "历史计划：三步走" },
+        { "type": "userMessage", "id": "hist-user-1", "text": "用户历史输入（应跳过）" }
+      ]
+    }
+  ],
+  "turnScripts": [
+    {
+      "steps": [
+        {
+          "do": "item",
+          "phase": "completed",
+          "item": { "type": "agentMessage", "id": "item-after-resume", "text": "rejoin 后的新回答" }
+        }
+      ],
+      "completedStatus": "completed"
+    }
+  ]
+}

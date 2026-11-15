@@ -35,6 +35,9 @@ importers:
       '@aether/adapter-claude':
         specifier: workspace:*
         version: link:../../packages/adapters/claude
+      '@aether/adapters-codex':
+        specifier: workspace:*
+        version: link:../../packages/adapters/codex
       '@aether/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -131,6 +134,22 @@ importers:
       '@aether/storage':
         specifier: workspace:*
         version: link:../../storage
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  packages/adapters/codex:
+    dependencies:
+      '@aether/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@aether/core':
+        specifier: workspace:*
+        version: link:../../core
+      '@aether/process-host':
+        specifier: workspace:*
+        version: link:../../process-host
+    devDependencies:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

@@ -1,0 +1,22 @@
+{
+  "name": "@aether/adapters-codex",
+  "version": "0.0.1",
+  "private": true,
+  "description": "L1 Codex adapter: self-built app-server JSONL RPC client (no jsonrpc envelope), thread/turn/item event normalization, approval bridging, thread/resume recovery, process-host governed spawn (SYSTEM_DESIGN §6.2/§6.4, P1-01).",
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aether/contracts": "workspace:*",
+    "@aether/core": "workspace:*",
+    "@aether/process-host": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

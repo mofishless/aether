@@ -1,0 +1,21 @@
+{
+  "threadId": "thread-mock-transient",
+  "turnScripts": [
+    {
+      "steps": [
+        {
+          "do": "item",
+          "phase": "completed",
+          "item": { "type": "agentMessage", "id": "item-msg-1", "text": "先说一半" }
+        },
+        { "do": "error", "willRetry": true, "message": "瞬时网络错误（自动重试）" },
+        {
+          "do": "item",
+          "phase": "completed",
+          "item": { "type": "agentMessage", "id": "item-msg-2", "text": "重试后完成" }
+        }
+      ],
+      "completedStatus": "completed"
+    }
+  ]
+}

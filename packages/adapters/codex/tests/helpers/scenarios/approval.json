@@ -1,0 +1,32 @@
+{
+  "threadId": "thread-mock-approval",
+  "turnScripts": [
+    {
+      "steps": [
+        {
+          "do": "item",
+          "phase": "started",
+          "item": {
+            "type": "commandExecution",
+            "id": "item-cmd-1",
+            "command": "npm test",
+            "cwd": "/tmp/work"
+          }
+        },
+        {
+          "do": "approval",
+          "method": "item/commandExecution/requestApproval",
+          "itemId": "item-cmd-1",
+          "approvalId": "approval-1",
+          "item": {
+            "type": "commandExecution",
+            "id": "item-cmd-1",
+            "command": "npm test",
+            "cwd": "/tmp/work"
+          }
+        }
+      ],
+      "completedStatus": "completed"
+    }
+  ]
+}

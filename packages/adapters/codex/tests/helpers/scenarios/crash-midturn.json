@@ -1,0 +1,27 @@
+{
+  "threadId": "thread-mock-crash",
+  "turnCountFile": true,
+  "turnScripts": [
+    {
+      "steps": [
+        {
+          "do": "item",
+          "phase": "completed",
+          "item": { "type": "agentMessage", "id": "item-crash-1", "text": "长任务进行中" }
+        },
+        { "do": "die", "code": 3 }
+      ],
+      "completedStatus": "completed"
+    },
+    {
+      "steps": [
+        {
+          "do": "item",
+          "phase": "completed",
+          "item": { "type": "agentMessage", "id": "item-crash-2", "text": "复活后的回答" }
+        }
+      ],
+      "completedStatus": "completed"
+    }
+  ]
+}

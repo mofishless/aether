@@ -1,0 +1,28 @@
+{
+  "threadId": "thread-mock-permissions",
+  "turnScripts": [
+    {
+      "steps": [
+        {
+          "do": "approval",
+          "method": "item/permissions/requestApproval",
+          "itemId": "item-perm-1",
+          "approvalId": "approval-1",
+          "permissions": {
+            "fileSystem": {
+              "entries": [{ "access": "write", "path": { "type": "path", "path": "D:/wt/mock" } }]
+            },
+            "network": { "enabled": true }
+          },
+          "item": {
+            "type": "commandExecution",
+            "id": "item-perm-1",
+            "command": "npm test",
+            "cwd": "/tmp/work"
+          }
+        }
+      ],
+      "completedStatus": "completed"
+    }
+  ]
+}
