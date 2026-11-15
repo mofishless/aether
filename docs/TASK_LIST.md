@@ -134,7 +134,7 @@ export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stoppe
 - 验收：P0 里程碑全旅程仅靠 UI 完成（见 §1 P0 行）。
 - 依赖：P0-05、P0-07、P0-08、P0-10。TDD：先写 Playwright E2E：新建项目→新建任务→启动 agent→观察到 running→结束后 diff 非空→跟问一条消息有响应。
 
-### P0-12 P0 验收 E2E 与 Windows 冒烟 — S
+### P0-12 P0 验收 E2E 与 Windows 冒烟 — S ✅（2026-11-15 完成：全旅程验收脚本 `pnpm verify:p0`（lint→typecheck→单测+覆盖率门禁→build→E2E，npm script && 链，零新依赖）；Windows 专项冒烟清单 docs/WINDOWS_SMOKE.md 四项（ConPTY/树杀/.cmd/含空格路径，各带对应测试文件与已知残留）；覆盖率门禁落地 vitest.config.ts coverage.thresholds 按包 glob 分组——contracts/core/adapters(`packages/adapters/*/src/**`)/storage/process-host 五包 lines/statements/functions 各 ≥80（glob 分组语法经 vitest v5 类型定义核定 + win32 实证红探针两轮），CI Unit tests 步骤加 `--coverage` 双矩阵生效；收口摸底（Windows 真机全仓）Stmts/Lines：contracts 100/100、core 90/90、adapters 91.37/91.71、storage 82.75/82.55、process-host 97.14/100（短板 kill-tree.ts 69.09%→四指标全 100（55/55 语句、8/8 函数、32/32 分支），新增平台矩阵测试 kill-tree-platform.test.ts 覆写 platform 双向驱动对侧分支，保证两 OS 覆盖率一致）；branches 现状 core 75/storage 70.45 未达线故未设线（如实记录不放水，P1 补齐后纳入）；含空格路径补两测——core worktree 全链含空格目录（建/分支/删不炸）+ process-host mock CLI 整目录复制含空格目录（win32 cli.cmd `%~dp0` 展开全链 / POSIX cli.sh）；真机验证口径 = Windows 真机跑 verify:p0 全绿（四项冒烟全覆盖），CI 双矩阵同口径复验）
 
 - 产出物：全旅程验收脚本；Windows 专项冒烟清单（ConPTY、树杀、`.cmd`、含空格路径）；核心包覆盖率门禁 ≥80%（contracts/core/adapters/storage/process-host；desktop UI 不设线）。
 - 验收：Windows 真机全旅程绿；`vitest --coverage` 达标。
