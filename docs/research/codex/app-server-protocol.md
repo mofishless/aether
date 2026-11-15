@@ -80,16 +80,17 @@ turn/interrupt {threadId, turnId} → {}   // 中断结果经 turn/completed(sta
 
 服务端发**带 id 的请求**，客户端必须以 `{"id": ..., "result": {...}}` 应答（不是通知）。并发应答能力必须具备，否则阻塞 turn。
 
-| v2 方法（现行）                         | 场景     | decision 值域                                                                                                                                                             |
+| v2 方法（现行）                         | 场景     | decision 值域 / 应答形状                                                                                                                                                  |
 | --------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `item/commandExecution/requestApproval` | 命令执行 | `'accept'` \| `'acceptForSession'` \| `{acceptWithExecpolicyAmendment:{execpolicyAmendment:[...]}}` \| `{applyNetworkPolicyAmendment:{...}}` \| `'decline'` \| `'cancel'` |
 | `item/fileChange/requestApproval`       | 文件写   | `'accept'` \| `'acceptForSession'` \| `'decline'` \| `'cancel'`                                                                                                           |
-| `item/permissions/requestApproval`      | 权限扩展 | `{permissions: GrantedPermissionProfile, scope: 'turn'\|'session'}`                                                                                                       |
+| `item/permissions/requestApproval`      | 权限扩展 | **应答形状特例（非 decision 字面量）**：`{permissions: GrantedPermissionProfile(必填), scope: 'turn'\|'session'(缺省 turn), strictAutoReview?}`（见下方 bullets）         |
 
 - **decline ≠ cancel**：decline = 拒绝但 agent 继续 turn；cancel = 拒绝并**中断 turn**。
+- **permissions 方法应答形状（官方 schema PermissionsRequestApprovalResponse，P1-01 评审 F1 定案）**：应答 = `{permissions: GrantedPermissionProfile(必填), scope: 'turn'|'session'(缺省 turn), strictAutoReview?}`；`GrantedPermissionProfile = {fileSystem: AdditionalFileSystemPermissions|null, network: AdditionalNetworkPermissions|null}`（全字段可空）——值域**没有 decline 字面量**：deny = 空授权 `{permissions: {fileSystem: null, network: null}, scope: 'turn'}`（唯一合法拒绝形状）；approve = 请求 `params.permissions` 原样回授（RequestPermissionProfile 与 GrantedPermissionProfile 同构：fileSystem/network 两键）。
 - v1 遗留 `execCommandApproval` / `applyPatchApproval`（蛇形 ReviewDecision：`approved` / `approved_for_session` / `denied{rejection}` / `abort`…）已标 DEPRECATED——适配器以 v2 为主，v1 仅做兜底容错识别。
 - 审批超时由服务端处理（TimedOut 按 Decline 处理）。
-- Aether 映射定案：`allow→accept`、`always→acceptForSession`、`deny→decline`。
+- Aether 映射定案：`allow→accept`、`always→acceptForSession`、`deny→decline`（commandExecution/fileChange 的 `{decision: <值>}` 应答）；permissions 方法按上一条 bullet 的授予形状应答。
 
 ## 5. 恢复（thread/resume）与 fork
 
