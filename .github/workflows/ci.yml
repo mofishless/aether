@@ -59,7 +59,8 @@ jobs:
 
       - name: E2E smoke (Linux, xvfb)
         if: runner.os == 'Linux'
-        run: xvfb-run --auto-serverargs --server-args="-screen 0 1280x1024x24" pnpm test:e2e
+        # 注意选项是 --auto-servernum（不是 --auto-serverargs，后者直接 unrecognized option 退出）
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" pnpm test:e2e
 
       - name: E2E smoke (Windows)
         if: runner.os == 'Windows'
