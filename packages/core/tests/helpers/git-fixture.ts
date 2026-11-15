@@ -15,8 +15,15 @@ export interface GitProjectFixture {
   dispose(): void;
 }
 
-export function createGitProject(): GitProjectFixture {
-  const baseDir = mkdtempSync(join(tmpdir(), `aether-core-${randomUUID().slice(0, 8)}-`));
+export interface CreateGitProjectOptions {
+  /** 项目根的父目录（默认系统 tmp）：传入含空格目录可覆盖"路径含空格"场景 */
+  readonly parentDir?: string;
+}
+
+export function createGitProject(options: CreateGitProjectOptions = {}): GitProjectFixture {
+  const baseDir = mkdtempSync(
+    join(options.parentDir ?? tmpdir(), `aether-core-${randomUUID().slice(0, 8)}-`),
+  );
   const projectRoot = join(baseDir, "project");
   mkdirSync(projectRoot);
   const git = (args: readonly string[], cwd: string = projectRoot): string =>

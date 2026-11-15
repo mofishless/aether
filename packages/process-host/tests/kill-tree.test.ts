@@ -229,4 +229,18 @@ describe("killTree：进程树击杀（P0-06 核心验收）", () => {
       expect(byPid.alreadyGone).toBe(true);
     }
   }, 20_000);
+
+  it("spawn 失败句柄（真实 ENOENT，pid=null）：无可杀者，alreadyGone=true 不抛", async () => {
+    // 真实 node spawn 失败路径：进程从未创建（error 事件，exited 将 reject），pid=null。
+    // method 按真实平台分派——双平台语义：win32="taskkill"、POSIX="process-group"，
+    // 两分支本测试各自原生跑到（kill-tree-platform.test.ts 另覆写 platform 双向复验）。
+    const handle = spawnTracked("aether-missing-command-7f3a", []);
+    expect(handle.pid).toBeNull();
+    const result = await killTree(handle);
+    expect(result).toEqual({
+      pid: null,
+      method: IS_WIN ? ("taskkill" as const) : ("process-group" as const),
+      alreadyGone: true,
+    });
+  }, 20_000);
 });
