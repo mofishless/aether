@@ -107,4 +107,20 @@ describe.skipIf(shell === null)("pty-session：真实 PTY 生命周期", () => {
     },
     20_000,
   );
+
+  // CI run #13 ubuntu 回归：正常退出必须报 exitCode=0——Linux 下进程退出时 PTY
+  // master 读端发 EIO error（伴生事件），先于 native onExit 到达；error 监听器
+  // 若 settle(null) 会把正常退出误判为异常终止。node -e 双平台退出语义一致。
+  it("自然退出的进程：退出证明 exitCode=0（EIO 伴生 error 不得误判异常终止）", async () => {
+    const session = createPtySession({
+      terminalId: "t-clean-exit",
+      file: process.execPath,
+      args: ["-e", "console.log('aether-clean-exit')"],
+      cols: 80,
+      rows: 24,
+    });
+    const proof = await session.exited;
+    expect(proof.exitCode).toBe(0);
+    expect(proof.signal).toBeNull();
+  });
 });

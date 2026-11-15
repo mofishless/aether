@@ -129,10 +129,12 @@ export function createPtySession(options: PtySpawnOptions): PtySession {
   };
 
   // node-pty 在无 'error' 监听时会把异步错误直接 throw 崩掉宿主进程
-  // （unixTerminal.js 的 listeners('error') < 2 分支）；这里兜底为退出证明，保 daemon 不死。
-  (pty as unknown as EventEmitter).on("error", () => {
-    settle({ exitCode: null, signal: null });
-  });
+  // （unixTerminal.js 的 listeners('error') < 2 分支）——此监听只为计数防 throw，
+  // 绝不 settle：Linux 下进程正常退出时 PTY master 读端必发 EIO error（正常退出
+  // 伴生事件），且它先于 native onExit 线程回调到达——若在此 settle(null) 会把
+  // exitCode=0 的正常退出误判为异常终止（run #13 ubuntu 实测）。退出证明唯一源
+  // = native onExit（进程死则 waitpid 线程必达）+ dispose 的 5s 兜底。
+  (pty as unknown as EventEmitter).on("error", () => {});
 
   pty.onExit(({ exitCode, signal }) => {
     settle({ exitCode: normalizeExitCode(exitCode, signal), signal: signal ?? null });
