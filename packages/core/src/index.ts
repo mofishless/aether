@@ -32,3 +32,27 @@ export type {
   CreateWorkspaceResult,
   WorktreeLifecycleOptions,
 } from "./worktree/worktree-service.js";
+
+// Agent 适配器端口与会话状态机（SYSTEM_DESIGN §6.2/§6.4/§8.1，P0-07 阶段 1）：
+// 枚举与事件类型唯一来源 @aether/contracts（port.ts 仅类型转发，禁止重复定义）。
+export type {
+  AdapterCapabilities,
+  AdapterContext,
+  AgentAdapter,
+  AgentProcess,
+  CancelReason,
+  DiscoverResult,
+  ResolvedProviderConfig,
+  SessionRecord,
+  SpawnInput,
+} from "./agents/port.js";
+export type {
+  AgentStatus,
+  AutonomyLevel,
+  PermissionDecision,
+  ProviderKind,
+} from "./agents/port.js";
+export type { AdapterFactory } from "./agents/registry.js";
+export { createAdapter, registerAdapter } from "./agents/registry.js";
+export { applySessionEvent, INITIAL_AGENT_STATUS } from "./agents/session-state-machine.js";
+export type { SessionTransitionResult } from "./agents/session-state-machine.js";
