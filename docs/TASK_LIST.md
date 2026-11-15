@@ -95,12 +95,13 @@ export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stoppe
 - 依赖：P0-03。TDD：先写树杀测试：三层进程 fixture → kill → 轮询 PID 全消失 + 拿到退出证明。
 - ⚠风险：Windows 进程树击杀（调研 06 §9.1）。
 
-### P0-07 Claude Agent SDK 适配器（L1）— L
+### P0-07 Claude Agent SDK 适配器（L1）— L ✅（2026-11-15 完成：packages/core AgentAdapter 端口 + 注册表（§6.2/§6.4，枚举零重复自 contracts 转发）+ 会话状态机纯函数 applySessionEvent（113 测试，§8.1 定案回写文档）；packages/adapters/claude @aether/adapter-claude：@anthropic-ai/claude-agent-sdk@0.3.325 官方 spawnClaudeCodeProcess 钩子 → process-host 治理（PID/ExitProof/killTree 全套，无降级）、SDKMessage→ProviderEvent 七成员归一纯函数（在线泵与 normalizeLogs 共用）、canUseTool↔permission 双向桥、follow-up/resume 走 Options.resume、终态按排序契约物化；包内 69 测试 + 真实 CLI 集成 2/2（AETHER_TEST_REAL_CLI=1 门控，maxTurns:2 成本护栏）；spec-review 4 findings 已修——活跃 run 集合化治理零失联（major：spawnFollowUp 顶替单槽致旧 run 句柄失联）、followUpAtMessage 如实 false、maxTurns 透传落地、§8.1 定案回写）
 
 - 产出物：`AgentAdapter` 接口（`spawn / spawnFollowUp / resume / cancel / dispose / normalizeLogs / discover / resolvePermission`，蓝图 §2，三层分类法在此定形；接口唯一权威 = SYSTEM_DESIGN §6.2，此处不复述）+ Claude 实现：`@anthropic-ai/claude-agent-sdk` query() stream-json、会话状态机（P0-02 枚举，事件直出不解析终端流，蓝图 §5）、`--resume` 续聊、spawn 钩子接入 P0-06。
 - 验收：mock 事件流下状态迁移全覆盖；对真实 claude CLI 完成一个任务并落库；follow-up 以 `--resume` 接续同一会话。
 - 依赖：P0-02、P0-04、P0-06。TDD：先写状态机纯函数单测（事件序列→状态迁移全路径含 error 分支）；再写 mock stream-json 适配器单测；真实 CLI 集成测试标记 CI 跳过。
 - ⚠风险：CLI flag 兼容——flag 只信 CLI 自己的 `--help`、严格解析器拒绝重复 flag（调研 06 §2/§9）。
+- 备注（实现定案）：SDK 续聊参数 = `Options.resume`（非 resumeSessionId）；autonomy→permissionMode 映射 read_only→plan / workspace_write→acceptEdits / auto→auto；resume() 返回休眠句柄（pid=null，首次 spawnFollowUp 才拉起进程）；spawnFollowUp 返回 void，follow-up 轮 PID 由 daemon 侧另行落库（端口观察，P0-09 处理）。
 
 ### P0-07b aether-mock-cli：scripted 回放引擎 — S~M
 

@@ -532,6 +532,14 @@ ConPTY 预热、.cmd 引号转义、进程树击杀、隐藏控制台窗口（�
 | 进程退出码 0 / turn 结束        | → stopped        |
 | 非零退出 / 协议错误             | → error          |
 
+P0-07 实现定案（`packages/core/src/agents/session-state-machine.ts`，与上表的关系）：
+
+- **首事件类型分派**：上表"首个事件 → ready"精确为——`session` 事件（握手）在 starting 中 → ready；`message`/`tool_use`/`tool_result` 任何活跃态 → running、`permission_request` 任何活跃态 → waiting（首个事件即活动的 CLI 直达 running/waiting，不强迫经过 ready）。
+- **`session` 事件双语义**（contracts ProviderEvent.session 无 start/end 判别字段）：starting 中 = 握手 → ready；其余活跃态 = 结束信号 → stopped（adapter 约定 session 事件只在生命周期边界发出）。
+- **`status` 事件来源表**：stopped 自任何活跃态可进；ready 仅自 starting/ready（无 running → ready 回边）；starting 不可回退。
+- **终态吸收**：stopped/error 之后到达的一切事件一律拒绝、状态不再改判（含重复停止信号与终态后 error）。
+- **排序契约**（adapter 义务）：终态事件须在进程退出证明之后物化——先判非零退出（发 error），干净退出才发 stopped；killedByUs = 用户取消 → stopped 而非 error。
+
 MVP 不做终端流解析；L3 三通道（终端流解析 + CLI 原生 hooks + MCP 自报，见调研 02.b）属 P2+。
 
 ### 8.2 可靠性要点（见调研 06 §9 / README 公理 6）
