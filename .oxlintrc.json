@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxlint/configuration-schema.json",
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "eqeqeq": "error"
+  },
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "out",
+    "coverage",
+    "playwright-report",
+    "test-results",
+    ".t3code-tmp",
+    ".wf-vk-src"
+  ]
+}

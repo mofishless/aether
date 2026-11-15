@@ -1,0 +1,32 @@
+{
+  "name": "aether",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Local-first multi-agent orchestration cockpit for coding agents. Electron + daemon, inspired by AgentsRoom's design axioms.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @aether/desktop dev",
+    "build": "pnpm --filter @aether/desktop build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "pnpm --filter @aether/desktop test:e2e",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "oxlint . && oxfmt --check .",
+    "format": "oxfmt .",
+    "spike:node-sqlite": "node scripts/spike-node-sqlite.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@vitest/coverage-v8": "^5.1.0",
+    "electron": "45.3.2",
+    "oxfmt": "^0.78.0",
+    "oxlint": "^1.93.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "packageManager": "pnpm@11.1.3"
+}

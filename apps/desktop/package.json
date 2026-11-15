@@ -1,0 +1,20 @@
+{
+  "name": "@aether/desktop",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Aether Electron shell. Main process holds zero domain logic: window lifecycle + daemon supervision only.",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "electron": "45.3.2",
+    "electron-vite": "^6.0.0",
+    "vite": "^8.3.8"
+  }
+}
