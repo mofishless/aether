@@ -1,0 +1,65 @@
+{
+  "protocol": "codex-app-server",
+  "description": "Codex 全旅程慢速副本：首条 agentMessage 前置 5000ms 延时——turn/started 已置位 running，挂起窗口内 UI 可稳定观测 running 中途态（对照 claude happy-path-slow.json 用途）；其余旅程同 codex-happy-path.json（commandExecution 审批 accept + 完成消息 + thread-1 跨进程恢复历史）。",
+  "exitCode": 0,
+  "initialize": {
+    "userAgent": "aether-mock-codex/0.1.0",
+    "codexHome": "~/.codex",
+    "platformFamily": "windows",
+    "platformOs": "win32"
+  },
+  "turns": [
+    {
+      "delayMs": 1,
+      "items": [
+        {
+          "type": "agentMessage",
+          "text": "mock：开始处理任务",
+          "deltas": 2,
+          "delayMs": 5000
+        },
+        {
+          "type": "commandExecution",
+          "command": "echo aether",
+          "cwd": "D:/wt/mock",
+          "exitCode": 0,
+          "output": "aether",
+          "approval": { "reason": "命令执行超出当前沙箱策略" },
+          "delayMs": 1
+        },
+        {
+          "type": "agentMessage",
+          "text": "mock：任务完成",
+          "deltas": 1,
+          "delayMs": 1
+        }
+      ]
+    }
+  ],
+  "resume": {
+    "threadId": "thread-1",
+    "turns": [
+      {
+        "id": "turn-1",
+        "rootTurnId": "turn-1",
+        "items": [
+          { "id": "item-1", "type": "agentMessage", "text": "mock：开始处理任务" },
+          {
+            "id": "item-2",
+            "type": "commandExecution",
+            "command": "echo aether",
+            "cwd": "D:/wt/mock",
+            "exitCode": 0,
+            "aggregatedOutput": "aether"
+          },
+          { "id": "item-3", "type": "agentMessage", "text": "mock：任务完成" }
+        ],
+        "status": "completed",
+        "error": null,
+        "startedAt": "2026-11-15T10:00:00.000Z",
+        "completedAt": "2026-11-15T10:00:00.008Z",
+        "durationMs": 8
+      }
+    ]
+  }
+}

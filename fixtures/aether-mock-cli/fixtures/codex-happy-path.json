@@ -1,0 +1,65 @@
+{
+  "protocol": "codex-app-server",
+  "description": "Codex app-server 全旅程：initialize → thread/start → turn/start（agentMessage 文本增量 + commandExecution 命令执行 + 一次审批请求 accept 后完成）；resume 段声明 thread-1 跨进程恢复历史（canResume=true 验收素材）。",
+  "exitCode": 0,
+  "initialize": {
+    "userAgent": "aether-mock-codex/0.1.0",
+    "codexHome": "~/.codex",
+    "platformFamily": "windows",
+    "platformOs": "win32"
+  },
+  "turns": [
+    {
+      "delayMs": 1,
+      "items": [
+        {
+          "type": "agentMessage",
+          "text": "mock：开始处理任务",
+          "deltas": 2,
+          "delayMs": 1
+        },
+        {
+          "type": "commandExecution",
+          "command": "echo aether",
+          "cwd": "D:/wt/mock",
+          "exitCode": 0,
+          "output": "aether",
+          "approval": { "reason": "命令执行超出当前沙箱策略" },
+          "delayMs": 1
+        },
+        {
+          "type": "agentMessage",
+          "text": "mock：任务完成",
+          "deltas": 1,
+          "delayMs": 1
+        }
+      ]
+    }
+  ],
+  "resume": {
+    "threadId": "thread-1",
+    "turns": [
+      {
+        "id": "turn-1",
+        "rootTurnId": "turn-1",
+        "items": [
+          { "id": "item-1", "type": "agentMessage", "text": "mock：开始处理任务" },
+          {
+            "id": "item-2",
+            "type": "commandExecution",
+            "command": "echo aether",
+            "cwd": "D:/wt/mock",
+            "exitCode": 0,
+            "aggregatedOutput": "aether"
+          },
+          { "id": "item-3", "type": "agentMessage", "text": "mock：任务完成" }
+        ],
+        "status": "completed",
+        "error": null,
+        "startedAt": "2026-11-15T10:00:00.000Z",
+        "completedAt": "2026-11-15T10:00:00.008Z",
+        "durationMs": 8
+      }
+    ]
+  }
+}
