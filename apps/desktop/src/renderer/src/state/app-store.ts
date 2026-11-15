@@ -13,6 +13,7 @@ import {
   type PermissionDecision,
   type ProjectSummary,
   type ProviderEvent,
+  type ProviderKind,
   type Session,
   type Task,
 } from "@aether/contracts";
@@ -26,6 +27,7 @@ import {
   parseTaskList,
   parseTaskUpdate,
 } from "./wire-parse.js";
+import { isProviderKind } from "./provider-capabilities.js";
 
 /** 单会话事件流保留上限（环形截断，防长会话无限增长） */
 export const MAX_EVENTS_PER_SESSION = 500;
@@ -57,6 +59,13 @@ export interface AppStoreState {
   readonly pendingPermissions: readonly PendingPermission[];
   readonly diff: DiffResult | null;
   readonly lastError: string | null;
+  /**
+   * 启动面板选中的 provider kind（P1-01 支撑件）：驱动能力差异标注 + spawn 载荷
+   * （P1-01 评审 F2 接线：agents.spawn 显式 providerKind 真实驱动 daemon 路由）。
+   */
+  readonly selectedProviderKind: ProviderKind;
+  /** sessionId → spawn 时所选 provider kind（本地记录；终态不清除，重连保留） */
+  readonly sessionProviderKinds: Readonly<Record<string, ProviderKind>>;
 }
 
 const INITIAL_STATE: AppStoreState = {
@@ -71,6 +80,8 @@ const INITIAL_STATE: AppStoreState = {
   pendingPermissions: [],
   diff: null,
   lastError: null,
+  selectedProviderKind: "claude-sdk",
+  sessionProviderKinds: {},
 };
 
 export const useAppStore = create<AppStoreState>()(() => INITIAL_STATE);
@@ -326,9 +337,21 @@ async function waitForSessionVisible(sessionId: string, taskId: string): Promise
   return false;
 }
 
+/** 切换启动面板的 provider kind（边界校验：未知 kind 拒绝并置错，不静默吞） */
+export function selectProviderKind(kind: ProviderKind): void {
+  if (!isProviderKind(kind)) {
+    setLastError(`切换 provider 失败：未知 provider kind（${String(kind)}）`);
+    return;
+  }
+  useAppStore.setState((previous) =>
+    previous.selectedProviderKind === kind ? previous : { ...previous, selectedProviderKind: kind },
+  );
+}
+
 export async function spawnAgent(prompt: string): Promise<boolean> {
   const client = rpc;
   const taskId = useAppStore.getState().selectedTaskId;
+  const selectedProviderKind = useAppStore.getState().selectedProviderKind;
   if (client === null) {
     setLastError("启动 agent 失败：RPC 通道未就绪");
     return false;
@@ -338,13 +361,28 @@ export async function spawnAgent(prompt: string): Promise<boolean> {
     return false;
   }
   try {
-    // agentProfileId 缺省：daemon 取种子全局默认 profile（契约 P0-11 定案）
-    const handle = await client.request("agents.spawn", { taskId, prompt });
+    // agentProfileId 缺省：daemon 取种子全局默认 profile（契约 P0-11 定案）；
+    // providerKind 显式携带（P1-01 评审 F2 接线）：真实驱动 daemon 路由——
+    // 显式入参优先于 env 覆盖缝与 profile 配置行 kind
+    const handle = await client.request("agents.spawn", {
+      taskId,
+      prompt,
+      providerKind: selectedProviderKind,
+    });
     const parsed = parseSessionHandle(handle);
     if (parsed === null) {
       setLastError("agents.spawn 返回形状非法（wire 校验失败）");
       return false;
     }
+    // 本地记录 spawn 时所选 kind（AgentCard 标签数据源；P1-01 F2 接线后与 daemon
+    // 实际路由一致——载荷驱动，daemon commandJson 记录同一 kind）
+    useAppStore.setState((previous) => ({
+      ...previous,
+      sessionProviderKinds: {
+        ...previous.sessionProviderKinds,
+        [parsed.sessionId]: selectedProviderKind,
+      },
+    }));
     // 会话行落地 + 具体 topic 补订（refreshSessions 内 ensureSubscribed）+ 激活；
     // 行落库与 RPC 应答偶发可见性差时小步重试（有界）——耗尽仍不可见则显式置错
     // （不静默：用户可经任务列表重选刷新恢复）

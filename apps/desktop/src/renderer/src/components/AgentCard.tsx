@@ -1,8 +1,12 @@
 // agent 卡片（P0-11）：每 session 一张——状态点（颜色映射 AgentStatus）+ 耗时
 // （createdAt 起，本地秒级跳动；终态定格）+ 点击切活动视图。
+// P1-01 支撑件：provider kind 标签（本地 spawn 时记录；无记录不渲染，不猜——
+// Session 契约无 provider 字段。P1-01 评审 F2 接线后，记录值 = spawn 载荷所选
+// kind，与 daemon 实际路由一致）。
 import { useEffect, useState, type ReactElement } from "react";
 import type { AgentStatus, Session } from "@aether/contracts";
 import { setActiveSession, useAppStore } from "../state/app-store.js";
+import { PROVIDER_CAPABILITIES } from "../state/provider-capabilities.js";
 
 /** 状态点颜色映射（§8.1 七值；starting/ready/running/waiting 活跃，stopped/error 终态） */
 const STATUS_DOT_CLASS: Readonly<Record<AgentStatus, string>> = {
@@ -40,6 +44,8 @@ function useElapsedLabel(session: Session): string {
 export function AgentCard(props: { session: Session; active: boolean }): ReactElement {
   const { session, active } = props;
   const elapsed = useElapsedLabel(session);
+  // 基元选择器（string | undefined）：引用稳定，不触发 React #185 类重渲染
+  const providerKind = useAppStore((state) => state.sessionProviderKinds[session.id]);
   return (
     <button
       type="button"
@@ -56,6 +62,11 @@ export function AgentCard(props: { session: Session; active: boolean }): ReactEl
           <span data-testid="agent-status" className="agent-status-text">
             {session.status}
           </span>
+          {providerKind !== undefined && (
+            <span data-testid="agent-provider-kind" className="provider-chip">
+              {PROVIDER_CAPABILITIES[providerKind].label}
+            </span>
+          )}
           <span data-testid="agent-elapsed" className="agent-elapsed">
             {elapsed}
           </span>

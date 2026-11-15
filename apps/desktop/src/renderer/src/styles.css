@@ -216,6 +216,63 @@ body,
   cursor: default;
 }
 
+/* ===== P1-01 支撑件：provider 选择器与会话恢复能力标注 ===== */
+
+.provider-fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.provider-legend {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.provider-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.provider-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #262b35;
+  color: var(--fg);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.capability-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.capability-badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ok);
+  color: #101216;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .tab-bar {
   display: flex;
   gap: 6px;

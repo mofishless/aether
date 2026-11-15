@@ -201,7 +201,7 @@ describe("项目/任务/会话动作", () => {
     expect(currentState().selectedTaskId).toBe("t2");
   });
 
-  it("spawnAgent：agents.spawn 只带 taskId+prompt（agentProfileId 缺省=daemon 默认）；spawn 后刷新会话并激活", async () => {
+  it("spawnAgent：agents.spawn 带 taskId+prompt+providerKind（agentProfileId 缺省=daemon 默认；F2 接线：所选 kind 显式驱动路由）；spawn 后刷新会话并激活", async () => {
     const rpc = new FakeRpc();
     await bootstrapWithSession(rpc);
     rpc
@@ -214,7 +214,11 @@ describe("项目/任务/会话动作", () => {
     const ok = await spawnAgent("请完成 mock 任务");
     expect(ok).toBe(true);
     const spawnCall = rpc.calls.find((call) => call.method === "agents.spawn");
-    expect(spawnCall?.params).toEqual({ taskId: "t1", prompt: "请完成 mock 任务" });
+    expect(spawnCall?.params).toEqual({
+      taskId: "t1",
+      prompt: "请完成 mock 任务",
+      providerKind: "claude-sdk",
+    });
     expect(currentState().activeSessionId).toBe("s2");
   });
 
