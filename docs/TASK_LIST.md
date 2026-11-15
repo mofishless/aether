@@ -88,7 +88,7 @@ export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stoppe
 - 验收：崩溃中途（已写库行未动 Git / 已动 Git 未回写）重启后能清理或补建，主 checkout 永远干净。
 - 依赖：P0-04。TDD：先写"并发创建两个同名 workspace 只成功一个"集成测试（持久预留先行：先写库行再动 Git，调研 05.D.3）；再写崩溃恢复测试。
 
-### P0-06 进程治理基础 — M
+### P0-06 进程治理基础 — M ✅（2026-11-15 完成：packages/process-host 零原生依赖，spawnTracked/ExitProof 退出证明/killTree 树杀/spawnCommand .cmd 安全转义，38 测试；spec-review 6 findings 已修。**机制定案**：Windows 树杀用 taskkill /T /F 而非 Job 对象——零原生模块纪律优先；实验确认非 detached node 树在 Windows 本就随父级联消亡（libuv per-spawn job），残留缺口仅"中间层已死且 detached 孙进程脱链"与"宿主崩溃连带杀"，列为 P1+ Job 对象增量（killTree 接口已抽象可平替）；POSIX 腿由 CI ubuntu 矩阵验证）
 
 - 产出物：统一 spawn 服务：进程组分配、树杀（POSIX 进程组 / Windows Job 对象）、PID 级退出证明、Windows `.cmd` 引号与隐藏控制台窗口处理（Orca `@orca/process-host` 思路，调研 05.A + 蓝图 §2）。
 - 验收：spawn 会产生孙进程的 fixture 程序，树杀后 Windows 与 POSIX 均无孤儿存活。

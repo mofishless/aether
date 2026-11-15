@@ -109,7 +109,7 @@ aether/
 | packages/adapters/custom | 自定义 provider：三协议客户端 + 内置最小 agent loop                              | core、contracts、process-host                                          | 05.D（happy-providers）             |
 | packages/terminal        | PTY 池、会话管理、有界历史、渲染帧协议                                           | contracts                                                              | 05.B #5、05.C                       |
 | packages/storage         | SQLite 访问层、迁移链、outbox                                                    | contracts                                                              | 05.A、05.C                          |
-| packages/process-host    | 子进程宿主与治理：spawn、进程组树杀、退出证明、Windows 隐藏控制台窗口            | contracts（按需）                                                      | 06 §9                               |
+| packages/process-host    | 子进程宿主与治理：spawn、进程组树杀、退出证明、Windows 隐藏控制台窗口（树杀机制：POSIX 进程组 kill(-pgid)；Windows taskkill /T /F——零原生模块定案，Job 对象连带杀为 P1+ 增量） | contracts（按需）                                                      | 06 §9                               |
 | packages/mcp-host        | MCP host 与工具家族、token 鉴权、注入 CLI 配置（P1 建）                          | core、storage、contracts                                               | 06 §6、02.d                         |
 
 ## 4. 数据模型（SQLite 单库）

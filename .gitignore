@@ -21,6 +21,9 @@ test-results/
 .t3code-tmp/
 .wf-vk-src/
 
+# agent 会话临时 scratch（并行 workflow 实验脚本等，防干扰 lint）
+.tmp-*/
+
 # OS
 .DS_Store
 Thumbs.db
