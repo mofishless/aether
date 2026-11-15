@@ -132,6 +132,19 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/terminal:
+    dependencies:
+      '@aether/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      node-pty:
+        specifier: 1.1.0
+        version: 1.1.0
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
 packages:
 
   '@anthropic-ai/claude-agent-sdk-darwin-arm64@0.3.325':
@@ -1674,6 +1687,13 @@ packages:
   negotiator@1.1.0:
     resolution: {integrity: sha512-NMPBRMJgiQHjbd8phG3Vebdx4kZ1H121rbl5IkMqeOsahptB9BKo/d7oJ3zTXqTgagn2bWlNSXkh0QUGM31RYg==}
     engines: {node: '>=18'}
+
+  node-addon-api@7.1.0:
+    resolution: {integrity: sha512-mNcltoe1R8o7STTegSOHdnJNN7s5EUvhoS7ShnTHDyOSd+8H+UdWODq6qSv67PjC8Zc5JRT8+oLAMCr0SIXw7g==}
+    engines: {node: ^16 || ^18 || >= 20}
+
+  node-pty@1.1.0:
+    resolution: {integrity: sha512-20JqtutY6JPXTUnL0ij1uad7Qe1baT46lyolh2sSENDd4sTzKZ4nmAFkeAARDKwmlLjPx6XKRlwRUxwjOy+lUg==}
 
   node-releases@2.0.64:
     resolution: {integrity: sha512-zAPCKqMcnqs2nGy6nlkm7JduFseiBJy3EXHGLh+8pFR+TxGCBxxiEN21+UROU5CKwX/f4TlUcYjiM+vs/tsyxw==}
@@ -3324,6 +3344,12 @@ snapshots:
   negotiator@1.1.0:
     dependencies:
       content-type: 2.1.0
+
+  node-addon-api@7.1.0: {}
+
+  node-pty@1.1.0:
+    dependencies:
+      node-addon-api: 7.1.0
 
   node-releases@2.0.64: {}
 

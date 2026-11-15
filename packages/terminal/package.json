@@ -1,0 +1,21 @@
+{
+  "name": "@aether/terminal",
+  "version": "0.0.1",
+  "private": true,
+  "description": "PTY terminal subsystem for the daemon: node-pty session pool, bounded byte history, render frame codec, ConPTY warmup (SYSTEM_DESIGN §7, P0-08).",
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aether/contracts": "workspace:*",
+    "node-pty": "1.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
