@@ -53,6 +53,10 @@ jobs:
       - name: Build desktop
         run: pnpm build
 
+      - name: Install Electron system deps (Linux)
+        if: runner.os == 'Linux'
+        run: pnpm --filter @aether/desktop exec playwright install-deps chromium
+
       - name: E2E smoke (Linux, xvfb)
         if: runner.os == 'Linux'
         run: xvfb-run --auto-serverargs --server-args="-screen 0 1280x1024x24" pnpm test:e2e
