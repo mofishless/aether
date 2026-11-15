@@ -1,0 +1,21 @@
+{
+  "name": "@aether/daemon",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Headless daemon process: WebSocket JSON-RPC 2.0 server on 127.0.0.1 with one-time-token hello handshake (SYSTEM_DESIGN §1.2/§5).",
+  "type": "module",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --target node24 --clean",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aether/contracts": "workspace:*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/ws": "^8.18.0",
+    "tsup": "^8.5.0",
+    "typescript": "^7.0.2"
+  }
+}
