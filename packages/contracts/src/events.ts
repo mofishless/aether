@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AgentStatusSchema, TaskSchema, WorkspaceStatusSchema } from "./domain.js";
 
 // ===== 事件流 envelope（SYSTEM_DESIGN §5.4：订阅推送）=====
 
@@ -78,3 +79,45 @@ export function terminalExitTopic(terminalId: string): string {
 export function processLogsTopic(processId: string): string {
   return `process.${processId}.logs`;
 }
+
+// ===== 静态投影 topic 的 payload schema（P0-11 驾驶舱投影，§5.4 表末行）=====
+// daemon 发布前 / 渲染层消费前共用同一 schema（wire 边界 fail-closed 同口径）；
+// 形状贴 domain.ts 已有实体类型，不另造字段。
+
+/** task.updated 载荷：任务行投影（tasks.create/move、agent 状态迁移联动时发布） */
+export const TaskUpdatedPayloadSchema = z.object({ task: TaskSchema }).strict();
+export type TaskUpdatedPayload = z.infer<typeof TaskUpdatedPayloadSchema>;
+
+/** agent.status 载荷：会话状态点投影（状态机每次 applied 迁移时发布） */
+export const AgentStatusPayloadSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    workspaceId: z.string().min(1),
+    taskId: z.string().min(1),
+    status: AgentStatusSchema,
+  })
+  .strict();
+export type AgentStatusPayload = z.infer<typeof AgentStatusPayloadSchema>;
+
+/**
+ * workspace.status 载荷：工作区状态投影。status 用 domain 枚举收窄
+ * （WorkspaceStatusSchema；prompt 字面写 string，定案取枚举——wire 边界更严）。
+ */
+export const WorkspaceStatusPayloadSchema = z
+  .object({
+    workspaceId: z.string().min(1),
+    projectId: z.string().min(1),
+    status: WorkspaceStatusSchema,
+  })
+  .strict();
+export type WorkspaceStatusPayload = z.infer<typeof WorkspaceStatusPayloadSchema>;
+
+/** session.<id>.state 载荷：状态机迁移帧（§8.1；previous → status） */
+export const SessionStatePayloadSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    previous: AgentStatusSchema,
+    status: AgentStatusSchema,
+  })
+  .strict();
+export type SessionStatePayload = z.infer<typeof SessionStatePayloadSchema>;

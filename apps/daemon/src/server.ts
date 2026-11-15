@@ -6,7 +6,7 @@ import type { DaemonAssembly } from "./assembly/assembly.js";
 import { CLOSE_CODES } from "./close-codes.js";
 import { validateHello, type DaemonVersions } from "./handshake.js";
 import { blockEventLoopForever } from "./hang.js";
-import { routeMessage, type RouterDeps } from "./rpc/router.js";
+import { routeMessage, type RouterDeps, type RouteOutcome } from "./rpc/router.js";
 import { DAEMON_VERSION } from "./version.js";
 
 /** hello 超时（任务卡 P0-03：3s 内必须收到合法 hello，否则断开） */
@@ -41,6 +41,7 @@ interface ConnectionContext {
   readonly routerDeps: RouterDeps;
   readonly assembly: DaemonAssembly | undefined;
   readonly onShutdownRequested: (() => void) | undefined;
+  readonly sendError: (message: string) => void;
 }
 
 // 连接状态机（awaitingHello → ready）是固有的可变运行时状态；用最小局部 flag 表达。
@@ -54,6 +55,7 @@ function setupConnection(context: ConnectionContext): void {
     routerDeps,
     assembly,
     onShutdownRequested,
+    sendError,
   } = context;
   const state = { authenticated: false };
 
@@ -113,10 +115,25 @@ function setupConnection(context: ConnectionContext): void {
 
   function handleRpcMessage(raw: string): void {
     const outcome = routeMessage(raw, routerDeps);
+    if (outcome instanceof Promise) {
+      // P0-11 异步方法（agents.*/diff.*）：路由层已兜底 INTERNAL_ERROR，此处防御性兜住
+      outcome.then(dispatchOutcome, (error: unknown) =>
+        sendError(`RPC 异步分派异常：${error instanceof Error ? error.message : String(error)}`),
+      );
+      return;
+    }
+    dispatchOutcome(outcome);
+  }
+
+  function dispatchOutcome(outcome: RouteOutcome): void {
     if (outcome.kind === "none") {
       return;
     }
     if (outcome.kind === "response") {
+      // subscribe cursor 重放帧：按 seq 序先于应答帧送达（断线重续语义）
+      for (const frame of outcome.replayFrames ?? []) {
+        ws.send(frame);
+      }
       ws.send(outcome.frame);
       return;
     }
@@ -140,10 +157,13 @@ export function startDaemonServer(options: DaemonServerOptions): Promise<DaemonS
   const routerDeps: RouterDeps = {
     daemonVersion: DAEMON_VERSION,
     protocolVersion: PROTOCOL_VERSION,
-    // exactOptionalPropertyTypes：装配存在时才挂 terminals/subscribe 依赖
+    // exactOptionalPropertyTypes：装配存在时才挂各方法组依赖（缺省 → METHOD_NOT_FOUND）
     ...(assembly !== undefined && {
       terminals: assembly.terminalPool,
       events: assembly.eventBus,
+      catalog: assembly.catalog,
+      agents: assembly.agents,
+      diff: assembly.diff,
     }),
   };
 
@@ -173,6 +193,9 @@ export function startDaemonServer(options: DaemonServerOptions): Promise<DaemonS
         routerDeps,
         assembly,
         onShutdownRequested,
+        sendError: (message: string) => {
+          process.stderr.write(`[aether-daemon] ${message}\n`);
+        },
       });
     });
   });

@@ -47,4 +47,4 @@ export {
   type WorkspaceCreateInput,
   type WorkspacePatch,
 } from "./repositories/workspace.repository.js";
-export { seedDefaults } from "./seed.js";
+export { findDefaultGlobalProfile, seedDefaults } from "./seed.js";

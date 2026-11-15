@@ -9,6 +9,7 @@ import type {
   TaskStatus,
   Workspace,
 } from "./domain.js";
+import type { ProviderEvent } from "./provider-event.js";
 
 // ===== JSON-RPC 2.0 envelope（SYSTEM_DESIGN §5.1：JSON-RPC 2.0 over WebSocket）=====
 // 全部 envelope schema 采用 .strict()：wire 边界 fail-closed——未知字段一律拒绝。
@@ -174,6 +175,8 @@ export interface AetherRpc {
     parentId?: string;
   }): Task;
   "tasks.move"(input: { taskId: string; status: TaskStatus; position?: number }): Task;
+  /** P0-11 驾驶舱：项目任务列表（左栏 TaskList 数据源） */
+  "tasks.list"(input: { projectId: string }): { items: Task[] };
   // P1+ 占位：tasks.assign / tasks.comment（P1-02 backlog 看板）
 
   // --- agents（§5.2：会话与 provider）---
@@ -182,20 +185,34 @@ export interface AetherRpc {
     taskId: string;
     /** 缺省则按持久预留先行新建 worktree */
     workspaceId?: string;
-    agentProfileId: string;
+    /**
+     * 缺省 = daemon 取种子的全局默认 agent_profile（P0-11 渲染线定案：
+     * UI 无 profile 选择器，profile id 亦非固定值不可硬编码）。
+     */
+    agentProfileId?: string;
     prompt: string;
     /** 'read_only' | 'workspace_write' | 'auto'（映射见 §6.2） */
     autonomy?: AutonomyLevel;
   }): SessionHandle;
   "agents.followUp"(input: { sessionId: string; message: string }): SessionHandle;
   "agents.cancel"(input: { sessionId: string }): void;
-  /** 权限应答（§6.2 resolvePermission(processId, requestId, decision) 的 RPC 面） */
+  /**
+   * 权限应答（§6.2 resolvePermission(processId, requestId, decision) 的 RPC 面）。
+   * processId 可选（P0-11 渲染线定案）：permission_request 事件不携带 processId、
+   * 渲染层无从得知；缺省时 daemon 按 requestId 反查当前阻塞的进程。
+   */
   "agents.permission.respond"(input: {
-    processId: string;
+    processId?: string;
     requestId: string;
     decision: PermissionDecision;
   }): void;
   // P3+ 占位：agents.resume（P3-01 布局恢复）
+
+  // --- sessions（P0-11 驾驶舱：活动视图历史事件拉取）---
+  /** 会话历史归一化事件（daemon 走执行日志重放，按进程时间序合并） */
+  "sessions.listEvents"(input: { sessionId: string }): { events: ProviderEvent[] };
+  /** 任务名下全部会话（P0-11 AgentCard 数据源；daemon 经 workspace.taskId 联表） */
+  "sessions.list"(input: { taskId: string }): { items: Session[] };
 
   // --- terminals（§5.2：人类终端；帧协议见 terminal.ts）---
   /** §5.3 示例原文 */

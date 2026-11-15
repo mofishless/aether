@@ -225,3 +225,42 @@ describe("组装根：优雅关闭", () => {
     expect(() => logs.findByProcessId("any")).toThrow();
   });
 });
+
+describe("组装根：P0-11 服务装配与 warmup 孤儿收口", () => {
+  it("装配暴露 catalog/agents/diff 服务（router 依赖源）", () => {
+    const assembly = makeAssembly();
+    expect(assembly.catalog).toBeDefined();
+    expect(assembly.agents).toBeDefined();
+    expect(assembly.diff).toBeDefined();
+    expect(assembly.agents.registeredSessionCount).toBe(0); // daemon 重启后表清空（内存态）
+    void assembly.close();
+  });
+
+  it("warmup 注入缝幂等；close() 等待在途 warmup 收口（哑 PTY 不在池中，不吊进程）", async () => {
+    let started = 0;
+    let releaseWarmup: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      releaseWarmup = resolve;
+    });
+    const assembly = createDaemonAssembly({
+      dbPath: ":memory:",
+      warmup: () => {
+        started += 1;
+        return gate;
+      },
+    });
+    assembly.warmupConptyInBackground();
+    assembly.warmupConptyInBackground(); // 在途不重复发起
+    expect(started).toBe(1);
+
+    let closed = false;
+    const closing = assembly.close().then(() => {
+      closed = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(closed).toBe(false); // warmup 未收口 → close 阻塞等待（孤儿收口语义）
+    releaseWarmup();
+    await closing;
+    expect(closed).toBe(true);
+  });
+});

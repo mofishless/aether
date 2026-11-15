@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { ProviderConfigKind } from "@aether/contracts";
+import type { AgentProfile, ProviderConfigKind } from "@aether/contracts";
 import { AgentProfileRepository } from "./repositories/agent-profile.repository.js";
 import { ProviderConfigRepository } from "./repositories/provider-config.repository.js";
 
@@ -18,6 +18,18 @@ const DEFAULT_PROFILE_NAME = "Default Claude";
  * 说明：分步插入而非单事务——若中途失败，下一次 seedDefaults 会补齐缺失的一半，
  * 仍收敛到"恰好一套默认行"。
  */
+/**
+ * 查找种子的全局默认 agent_profile（projectId=null 且 name=默认名）。
+ * P0-11 agents.spawn 缺省 agentProfileId 时的解析口径——与种子同一判定来源，
+ * 导出复用防止两处身份判据漂移；不存在返回 null（调用方决定错误语义）。
+ */
+export function findDefaultGlobalProfile(profiles: AgentProfileRepository): AgentProfile | null {
+  const found = profiles
+    .findAll()
+    .find((profile) => profile.projectId === null && profile.name === DEFAULT_PROFILE_NAME);
+  return found ?? null;
+}
+
 export function seedDefaults(db: DatabaseSync): void {
   const configs = new ProviderConfigRepository(db);
   const profiles = new AgentProfileRepository(db);
@@ -42,9 +54,7 @@ export function seedDefaults(db: DatabaseSync): void {
     providerConfigId = defaultConfig.id;
   }
 
-  const hasDefaultProfile = profiles
-    .findAll()
-    .some((profile) => profile.projectId === null && profile.name === DEFAULT_PROFILE_NAME);
+  const hasDefaultProfile = findDefaultGlobalProfile(profiles) !== null;
   if (!hasDefaultProfile) {
     profiles.create({
       projectId: null, // NULL = 全局可用

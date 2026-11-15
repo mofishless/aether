@@ -46,6 +46,8 @@ export {
 export type { WorktreeLocation } from "./worktree/paths.js";
 export { runGit, tryGit } from "./worktree/git.js";
 export type { GitAttempt, GitContext, GitResult } from "./worktree/git.js";
+export { computeWorkspaceDiff } from "./worktree/diff.js";
+export type { WorkspaceDiffInput } from "./worktree/diff.js";
 export { copyEnvFile } from "./worktree/env-copy.js";
 export type { EnvCopyOutcome } from "./worktree/env-copy.js";
 export { detectPackageManager } from "./worktree/package-manager.js";
