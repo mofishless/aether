@@ -21,6 +21,7 @@ const noExternal = [
   "@aether/process-host",
   "@aether/storage",
   "@aether/adapter-claude",
+  "@aether/adapters-codex",
   "@aether/terminal",
 ];
 

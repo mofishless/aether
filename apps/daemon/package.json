@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@aether/adapter-claude": "workspace:*",
+    "@aether/adapters-codex": "workspace:*",
     "@aether/contracts": "workspace:*",
     "@aether/core": "workspace:*",
     "@aether/storage": "workspace:*",

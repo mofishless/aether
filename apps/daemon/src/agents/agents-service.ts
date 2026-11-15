@@ -26,6 +26,7 @@ import type {
   PermissionDecision,
   ProviderConfig,
   ProviderEvent,
+  ProviderKind,
   Session,
   SessionHandle,
   Task,
@@ -39,7 +40,13 @@ import type {
   ResolvedProviderConfig,
   WorktreeLifecycleService,
 } from "@aether/core";
-import { INITIAL_AGENT_STATUS, WorktreeError, applySessionEvent, nowIso } from "@aether/core";
+import {
+  INITIAL_AGENT_STATUS,
+  WorktreeError,
+  applySessionEvent,
+  hasAdapter,
+  nowIso,
+} from "@aether/core";
 import type {
   AgentProfileRepository,
   ExecutionProcessRepository,
@@ -65,6 +72,11 @@ export interface SpawnAgentInput {
   readonly workspaceId?: string | undefined;
   /** 缺省 = 种子的全局默认 agent_profile（P0-11 渲染线定案：UI 无 profile 选择器） */
   readonly agentProfileId?: string | undefined;
+  /**
+   * 显式 provider 路由（P1-01 评审 F2 接线）：优先级最高（env 覆盖缝 > 配置行 kind）。
+   * 必须已在适配器注册表内（值域通过 ≠ 已注册，如 acp/tui 为 P2+ 占位）。
+   */
+  readonly providerKind?: ProviderKind | undefined;
   readonly prompt: string;
   readonly autonomy?: AutonomyLevel | undefined;
 }
@@ -94,6 +106,13 @@ export interface AgentServiceDeps {
   readonly createAdapterInstance: (cfg: ResolvedProviderConfig) => AgentAdapter;
   /** provider config 的 cliPath 覆盖（env AETHER_AGENT_CLI_PATH；生产 undefined 走 adapter 默认解析） */
   readonly cliPathOverride?: string;
+  /**
+   * provider kind 覆盖（P1-01 注入缝，env AETHER_AGENT_PROVIDER_KIND）：覆盖 provider
+   * config 行的 kind 路由。优先级低于 agents.spawn 显式 providerKind 入参（P1-01 评审
+   * F2 接线：显式入参 > env 覆盖 > 配置行 kind）。覆盖后的 kind 如实记入
+   * commandJson（重放归属事实），不改 provider_config 行。daemon 集成测试仍在用。
+   */
+  readonly providerKindOverride?: ProviderKind;
   /** 诊断输出口（默认 stderr；值永不携带 env/token 等敏感信息） */
   readonly log?: (message: string) => void;
 }
@@ -122,6 +141,18 @@ export class AgentService {
     if (providerConfig === null) {
       throw internal(`provider 配置行缺失：providerConfigId=${profile.providerConfigId}`);
     }
+    // P1-01 provider 路由（评审 F2 接线）：显式入参 providerKind > env 覆盖缝
+    // （AETHER_AGENT_PROVIDER_KIND）> provider 配置行 kind；commandJson/注册表记录
+    // 实际路由 kind（重放归属事实），不改 provider_config 行
+    const resolvedKind =
+      input.providerKind ?? this.deps.providerKindOverride ?? providerConfig.kind;
+    // 显式入参必须已在适配器注册表内（值域由 RPC schema 先拒；注册表成员资格在此拒
+    // ——acp/tui 值域合法但 P2+ 无实现），否则 invalidParams 且不建任何行
+    if (input.providerKind !== undefined && !hasAdapter(input.providerKind)) {
+      throw invalidParams(
+        `未注册的 provider kind：${input.providerKind}（适配器注册表内不存在；acp/tui 为 P2+ 占位）`,
+      );
+    }
 
     const workspace =
       input.workspaceId === undefined
@@ -139,8 +170,8 @@ export class AgentService {
     const processRow = this.deps.processes.create({
       sessionId,
       runReason: "coding_agent",
-      // P0-10 遗留收口：commandJson 记录 kind 归属（重放按 kind 分发；P0 仅 claude-sdk）
-      commandJson: JSON.stringify({ kind: providerConfig.kind }),
+      // P0-10 遗留收口：commandJson 记录 kind 归属（P1-01 起重放按 kind 分发重放器）
+      commandJson: JSON.stringify({ kind: resolvedKind }),
       status: "running",
     });
     const watch: StatusWatch = { status: INITIAL_AGENT_STATUS };
@@ -154,7 +185,7 @@ export class AgentService {
     };
     const ctx = this.buildEventContext(target, workspace.worktreePath);
     const adapter = this.deps.createAdapterInstance(
-      this.resolveProviderConfig(providerConfig, this.deps.cliPathOverride),
+      this.resolveProviderConfig(providerConfig, this.deps.cliPathOverride, resolvedKind),
     );
     let proc;
     try {
@@ -181,7 +212,7 @@ export class AgentService {
       adapter,
       ctx,
       providerConfigId: providerConfig.id,
-      providerKind: providerConfig.kind,
+      providerKind: resolvedKind,
       cancelling: false,
       exitProofSettled: false,
     };
@@ -195,6 +226,14 @@ export class AgentService {
   async followUp(input: { sessionId: string; message: string }): Promise<SessionHandle> {
     const sessionId = input.sessionId;
     const entry = this.requireEntry(sessionId);
+    // 审批等待期追问前置拒绝（P1-01 评审 F4）：waiting 态下活动 turn 挂在审批上，
+    // adapter 侧 turn/start 会空等 turn/completed 超时（≤5s）后抛错——立即拒绝并给
+    // 可行动文案，且不建 execution_process 行（无实质执行发生）
+    if (entry.watch.status === "waiting") {
+      throw invalidParams(
+        "会话正等待权限应答（waiting）：请先应答权限请求再追问（agents.permission.respond）",
+      );
+    }
     const processRow = this.deps.processes.create({
       sessionId,
       runReason: "follow_up",
@@ -374,17 +413,21 @@ export class AgentService {
     throw internal("工作区创建失败（重试用尽）", lastError);
   }
 
-  /** 组装 ResolvedProviderConfig：configJson 解析合并 + cliPath 覆盖（env 值不落库不进事件）。 */
+  /**
+   * 组装 ResolvedProviderConfig：configJson 解析合并 + cliPath 覆盖 + kind 覆盖
+   * （env 值不落库不进事件；kind 覆盖仅改路由，commandJson 记录的是实际路由值）。
+   */
   private resolveProviderConfig(
     providerConfig: ProviderConfig,
     cliPathOverride: string | undefined,
+    resolvedKind: ProviderKind,
   ): ResolvedProviderConfig {
     const config = readConfigObject(providerConfig.configJson);
     if (typeof cliPathOverride === "string" && cliPathOverride.length > 0) {
       config["cliPath"] = cliPathOverride;
     }
     return {
-      kind: providerConfig.kind,
+      kind: resolvedKind,
       providerConfigId: providerConfig.id,
       displayName: providerConfig.displayName,
       config,

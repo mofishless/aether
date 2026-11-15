@@ -17,13 +17,16 @@ import {
 } from "@aether/core";
 import {
   ProviderEventSchema,
+  ProviderKindSchema,
   TerminalExitFrameSchema,
   TerminalOutputFrameSchema,
   terminalExitTopic,
   terminalOutputTopic,
   type ProviderEvent,
+  type ProviderKind,
 } from "@aether/contracts";
 import { createClaudeAdapter } from "@aether/adapter-claude";
+import { createCodexAdapter } from "@aether/adapters-codex";
 import {
   AgentProfileRepository,
   ExecutionProcessLogRepository,
@@ -77,6 +80,15 @@ export interface DaemonAssemblyOptions {
    * 注意：env 值只进 adapter config，绝不落库、绝不进事件载荷。
    */
   readonly agentCliPath?: string;
+  /**
+   * provider kind 覆盖（P1-01 E2E/测试注入缝，与 agentCliPath 同款语义）：覆盖
+   * spawn 时 provider config 行的 kind 路由（如默认种子 claude-sdk → codex-app-server）。
+   * 缺省读 env AETHER_AGENT_PROVIDER_KIND（空/缺失 = undefined，走库内行值）。
+   * 注意：覆盖后的 kind 如实记入 execution_process.commandJson（重放按 kind 分发的
+   * 归属事实），但不改 provider_config 行、不进事件载荷。生产（providers 数据流
+   * 落地前）不应设置——UI provider 选择器接线是 P1 后续卡。
+   */
+  readonly providerKindOverride?: ProviderKind;
   /** ConPTY 预热实现注入缝（测试假件；默认 terminal 包 warmupConpty） */
   readonly warmup?: () => Promise<void>;
 }
@@ -127,8 +139,9 @@ export function createDaemonAssembly(options: DaemonAssemblyOptions = {}): Daemo
   const eventBus = options.eventBus ?? createEventBus();
   const terminalPool = options.terminalPool ?? createTerminalPool();
 
-  // §6.4：daemon 启动注册内置 kind（当前唯一内置 = claude-sdk；未来 acp/tui 以新 kind 进同一注册表）
+  // §6.4：daemon 启动注册内置 kind（claude-sdk + codex-app-server；未来 acp/tui 以新 kind 进同一注册表）
   registerAdapter("claude-sdk", createClaudeAdapter);
+  registerAdapter("codex-app-server", createCodexAdapter);
   // 重放用常驻适配器实例：normalizeLogs 是纯转换器（无进程状态），复用安全
   const claudeAdapter = createClaudeAdapter({
     kind: "claude-sdk",
@@ -136,6 +149,15 @@ export function createDaemonAssembly(options: DaemonAssemblyOptions = {}): Daemo
     displayName: "Claude",
     config: {},
   });
+  const codexAdapter = createCodexAdapter({
+    kind: "codex-app-server",
+    providerConfigId: "builtin-codex-app-server",
+    displayName: "Codex",
+    config: {},
+  });
+  /** kind → 重放归一化器（P1-01：commandJson.kind 分发；未知 kind 兜底 claude 同 P0 口径） */
+  const replayNormalizer = (kind: string | undefined) =>
+    kind === "codex-app-server" ? codexAdapter.normalizeLogs : claudeAdapter.normalizeLogs;
 
   const logs = new ExecutionProcessLogRepository(db);
   const processes = new ExecutionProcessRepository(db);
@@ -161,14 +183,15 @@ export function createDaemonAssembly(options: DaemonAssemblyOptions = {}): Daemo
       throw new Error(`未知进程：execution_process 行不存在（processId=${processId}）`);
     }
     // 归属修正用 execution_process 行的 sessionId（P0-09 注释定案形态）。
-    // kind 归属（P0-11 收口）：agents.spawn 落库 commandJson={"kind":...}——
-    // P0 仅 claude-sdk 一个内置 kind，其他 kind 到来时在此按 kind 分发重放器。
+    // kind 归属（P1-01 落地）：agents.spawn 落库 commandJson={"kind":...}，按 kind
+    // 分发重放归一化器（claude-sdk / codex-app-server；未知 kind 兜底 claude 同 P0 口径）。
     //
     // 行内容双形态（P0-10 定案）：daemon emit 写入的行 = 归一化 ProviderEvent
     // JSON（透传回填即可——经 mapSdkMessage 会落兜底跳过、静默重放 0 事件，
     // spec-review minor 修复）；SDK 原始帧行（fixture 回放/P0-11 原始行缝打开后）
     // = 走 normalizeLogs 归一化。两形态键面不相交，safeParse 探测无歧义；
     // 混合行按 SDK 帧整批处理（当前写入路径单一进程只有一种形态）。
+    const kind = parseCommandKind(row.commandJson);
     return replay.replayProcess(
       processId,
       (raw) => {
@@ -179,7 +202,7 @@ export function createDaemonAssembly(options: DaemonAssemblyOptions = {}): Daemo
             try {
               value = JSON.parse(line) as unknown;
             } catch {
-              value = line; // 非法 JSON：safeParse 必败 → 走 SDK 帧分支兜底
+              value = line; // 非法 JSON：safeParse 必败 → 走原始帧分支兜底
             }
           }
           return ProviderEventSchema.safeParse(value);
@@ -187,7 +210,7 @@ export function createDaemonAssembly(options: DaemonAssemblyOptions = {}): Daemo
         if (parsedAll.length > 0 && parsedAll.every((r) => r.success)) {
           return parsedAll.map((r) => (r as { success: true; data: ProviderEvent }).data);
         }
-        return claudeAdapter.normalizeLogs(raw);
+        return replayNormalizer(kind)(raw);
       },
       { sessionIdOverride: row.sessionId },
     );
@@ -225,6 +248,10 @@ export function createDaemonAssembly(options: DaemonAssemblyOptions = {}): Daemo
     options.agentCliPath !== undefined
       ? options.agentCliPath
       : readEnvCliPath(process.env["AETHER_AGENT_CLI_PATH"]);
+  const providerKindOverride =
+    options.providerKindOverride !== undefined
+      ? options.providerKindOverride
+      : readEnvProviderKind(process.env["AETHER_AGENT_PROVIDER_KIND"]);
   const agents =
     options.agents ??
     new AgentService({
@@ -242,6 +269,7 @@ export function createDaemonAssembly(options: DaemonAssemblyOptions = {}): Daemo
       logSink,
       createAdapterInstance: createAdapter,
       ...(agentCliPath !== undefined ? { cliPathOverride: agentCliPath } : {}),
+      ...(providerKindOverride !== undefined ? { providerKindOverride } : {}),
     });
   const catalog =
     options.catalog ??
@@ -314,4 +342,30 @@ function readEnvCliPath(raw: string | undefined): string | undefined {
   }
   const trimmed = raw.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/** env provider kind 清洗：空串/未知值视为未设置（undefined → 库内行值路由） */
+function readEnvProviderKind(raw: string | undefined): ProviderKind | undefined {
+  const trimmed = readEnvCliPath(raw);
+  if (trimmed === undefined) {
+    return undefined;
+  }
+  const parsed = ProviderKindSchema.safeParse(trimmed);
+  if (!parsed.success) {
+    process.stderr.write(
+      `[aether-daemon] AETHER_AGENT_PROVIDER_KIND 未知 kind '${trimmed}'，忽略（值域：${ProviderKindSchema.options.join("/")}\n`,
+    );
+    return undefined;
+  }
+  return parsed.data;
+}
+
+/** commandJson（{"kind":...}）安全解出 kind；非法/缺键返回 undefined（重放兜底 claude） */
+function parseCommandKind(commandJson: string): string | undefined {
+  try {
+    const parsed = JSON.parse(commandJson) as { kind?: unknown };
+    return typeof parsed.kind === "string" ? parsed.kind : undefined;
+  } catch {
+    return undefined;
+  }
 }

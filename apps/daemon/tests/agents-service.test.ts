@@ -18,11 +18,13 @@ import type { ProviderEvent } from "@aether/contracts";
 import {
   INITIAL_AGENT_STATUS,
   WorktreeLifecycleService,
+  registerAdapter,
   type AdapterCapabilities,
   type AdapterContext,
   type AgentAdapter,
   type AgentProcess,
   type DiscoverResult,
+  type ResolvedProviderConfig,
   type SessionRecord,
   type SpawnInput,
 } from "@aether/core";
@@ -132,6 +134,8 @@ class FakeAdapter implements AgentAdapter {
 interface Harness {
   readonly db: DatabaseSync;
   readonly adapter: FakeAdapter;
+  /** createAdapterInstance 收到的配置序列（providerKind 路由断言用） */
+  readonly adapterConfigs: ResolvedProviderConfig[];
   readonly service: AgentService;
   readonly projects: ProjectRepository;
   readonly tasks: TaskRepository;
@@ -168,6 +172,7 @@ function createHarness(options: { gitRoot?: string } = {}): Harness {
     onError: () => undefined,
   });
   const adapter = new FakeAdapter();
+  const adapterConfigs: ResolvedProviderConfig[] = [];
   const replayByProcess = new Map<string, ProviderEvent[]>();
   const worktrees = new WorktreeLifecycleService({
     store: workspaces,
@@ -194,12 +199,16 @@ function createHarness(options: { gitRoot?: string } = {}): Harness {
       backfilledRowCount: 0,
     }),
     logSink,
-    createAdapterInstance: () => adapter,
+    createAdapterInstance: (cfg) => {
+      adapterConfigs.push(cfg);
+      return adapter;
+    },
     log: () => undefined,
   });
   return {
     db,
     adapter,
+    adapterConfigs,
     service,
     projects,
     tasks,
@@ -775,5 +784,84 @@ describe("listSessionsByTask（sessions.list 服务面）", () => {
     } finally {
       h.dispose();
     }
+  });
+});
+
+describe("agents.spawn providerKind 显式路由（P1-01 评审 F2 接线）", () => {
+  let h: Harness;
+
+  beforeAll(() => {
+    // 注册表成员资格校验走 core 全局注册表：为本 describe 注册 codex-app-server 假工厂
+    // （生产由 daemon 组装根注册真适配器；此处只测服务层路由与校验语义）
+    registerAdapter("codex-app-server", () => new FakeAdapter());
+    h = createHarness();
+  });
+  afterAll(() => {
+    h.dispose();
+  });
+
+  let seedCount = 0;
+  function seed(): { taskId: string; workspaceId: string } {
+    seedCount += 1;
+    const project = h.projects.create({ name: "P-f2", rootPath: `D:\\p-f2-${seedCount}` });
+    const task = h.tasks.create({ projectId: project.id, title: "T-f2" });
+    const workspace = h.workspaces.create({
+      projectId: project.id,
+      name: `w-f2-${seedCount}`,
+      branch: `aether/w-f2-${seedCount}`,
+      worktreePath: `D:\\wt\\w-f2-${seedCount}`,
+      storageKey: `w-f2-${seedCount}`,
+    });
+    return { taskId: task.id, workspaceId: workspace.id };
+  }
+
+  it("显式 providerKind：优先级最高——ResolvedProviderConfig.kind 与 commandJson 均记录该 kind", async () => {
+    const seeded = seed();
+    const handle = await h.service.spawn({
+      taskId: seeded.taskId,
+      workspaceId: seeded.workspaceId,
+      prompt: "用 codex 跑",
+      providerKind: "codex-app-server",
+    });
+    expect(h.adapterConfigs.at(-1)).toMatchObject({ kind: "codex-app-server" });
+    const rows = h.processes.findAll().filter((row) => row.sessionId === handle.sessionId);
+    expect(rows).toHaveLength(1);
+    expect(JSON.parse(rows[0]?.commandJson ?? "{}")).toEqual({ kind: "codex-app-server" });
+    await h.service.cancel({ sessionId: handle.sessionId });
+  });
+
+  it("值域内但未注册的 kind → invalid_params（acp 为 P2+ 占位）且不建任何行", async () => {
+    const seeded = seed();
+    const sessionsBefore = h.sessions.findAll().length;
+    const processesBefore = h.processes.findAll().length;
+    await expect(
+      h.service.spawn({
+        taskId: seeded.taskId,
+        workspaceId: seeded.workspaceId,
+        prompt: "x",
+        providerKind: "acp",
+      }),
+    ).rejects.toMatchObject({ kind: "invalid_params" });
+    await expect(
+      h.service.spawn({
+        taskId: seeded.taskId,
+        workspaceId: seeded.workspaceId,
+        prompt: "x",
+        providerKind: "acp",
+      }),
+    ).rejects.toThrow(/未注册的 provider kind/);
+    expect(h.sessions.findAll().length).toBe(sessionsBefore);
+    expect(h.processes.findAll().length).toBe(processesBefore);
+  });
+
+  it("缺省 providerKind：维持 profile 的 provider 配置行 kind（默认种子 claude-sdk）", async () => {
+    const seeded = seed();
+    const handle = await h.service.spawn({
+      taskId: seeded.taskId,
+      workspaceId: seeded.workspaceId,
+      prompt: "默认路由",
+    });
+    expect(h.adapterConfigs.at(-1)).toMatchObject({ kind: "claude-sdk" });
+    await h.service.cancel({ sessionId: handle.sessionId });
   });
 });

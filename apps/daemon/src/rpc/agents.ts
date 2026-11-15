@@ -3,7 +3,7 @@
 // 异步方法（spawn/followUp 等）：返回 Promise<RouteOutcome>，异常在 handler 内
 // 收敛为错误帧（router 层再兜底 INTERNAL_ERROR）。
 import { z } from "zod";
-import { AutonomyLevelSchema } from "@aether/contracts";
+import { AutonomyLevelSchema, ProviderKindSchema } from "@aether/contracts";
 import type { JsonRpcRequest } from "@aether/contracts";
 import type { AgentService } from "../agents/agents-service.js";
 import { invalidParamsOutcome, serviceErrorOutcome, successOutcome } from "./outcomes.js";
@@ -29,6 +29,9 @@ export const AgentsSpawnParamsSchema = z
     workspaceId: idField.optional(),
     // 缺省 = daemon 取种子的全局默认 agent_profile（contracts 签名注释同口径）
     agentProfileId: idField.optional(),
+    // 显式 provider 路由（P1-01 评审 F2）：缺省 = profile 的 provider 配置行 kind；
+    // 值域外的值在此拒，值域内但未注册适配器的 kind 由服务面再拒（acp/tui 为 P2+ 占位）
+    providerKind: ProviderKindSchema.optional(),
     prompt: z.string().min(1),
     autonomy: AutonomyLevelSchema.optional(),
   })
