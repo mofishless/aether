@@ -103,13 +103,13 @@ export type AgentStatus = "starting" | "ready" | "running" | "waiting" | "stoppe
 - ⚠风险：CLI flag 兼容——flag 只信 CLI 自己的 `--help`、严格解析器拒绝重复 flag（调研 06 §2/§9）。
 - 备注（实现定案）：SDK 续聊参数 = `Options.resume`（非 resumeSessionId）；autonomy→permissionMode 映射 read_only→plan / workspace_write→acceptEdits / auto→auto；resume() 返回休眠句柄（pid=null，首次 spawnFollowUp 才拉起进程）；spawnFollowUp 返回 void，follow-up 轮 PID 由 daemon 侧另行落库（端口观察，P0-09 处理）。
 
-### P0-07b aether-mock-cli：scripted 回放引擎 — S~M
+### P0-07b aether-mock-cli：scripted 回放引擎 — S~M ✅（2026-11-15 完成：fixtures/aether-mock-cli 零 npm 依赖纯 Node ESM——cli.mjs + cli.cmd/cli.sh 平台包装器（win32 走 process-host .cmd 安全转义端到端复验 P0-06）+ 5 个语义化 fixture（happy-path/follow-up/permission-ask/error-exit/codex-neutral）；SDK 0.3.325 控制协议打通（--input-format stream-json 下 initialize control_request 自动回 success，can_use_tool 帧阻塞等 resolvePermission）；$MOCK_ARGV 回显通道断言 --resume 传递；退出前 stdout end+finish flush（Windows 管道异步句柄防帧截断，spec-review 修复）；10 测试（6 回放断言 + 4 真实 SDK query() 端到端：全旅程/状态机 fold/ExitProof/权限往返/非零退出排序契约））
 
 - 产出物：仓库根 `fixtures/aether-mock-cli`（非 workspace 包、不发布）script 化 mock CLI：读 fixture 脚本，按序回放 Claude stream-json 事件流与 Codex JSON-RPC 响应序列；协议覆盖随 P1-01 扩展 app-server 回放。
 - 验收：mock CLI 驱动适配器与状态机跑完一个任务旅程（无真实 CLI、无网络）；同一套 fixture 供 P0-09/P0-12 复用。
 - 依赖：P0-07；被 P0-12 依赖。TDD：先写"fixture 脚本 → 期望事件序列"回放断言测试，验证红→绿。
 
-### P0-08 PTY 终端子系统 — L
+### P0-08 PTY 终端子系统 — L ✅（2026-11-15 完成：packages/terminal @aether/terminal——node-pty 1.1.0 精确锁定（prebuild 预编译产物 + 自带 conpty.dll，无需 VS Build Tools）、pty-session（spawn 封装/seq 单调输出/退出证明 exitCode null=信号死/防御性 error 监听防崩宿主）、terminal-pool（create/write/resize/kill 幂等/disposeAll，自然退出留条目供 attach 查历史）、bounded-history（字节环形缓冲保帧边界，包级默认 256KiB，§7.2 落地注已记差异）、frame-codec（contracts 四帧 zod 复用）、shell 解析、ConPTY 预热 warmup()；20 测试 win32 真跑（含 UTF-8 中文 ConPTY 冒烟、resize 端到端 shell 内实测新尺寸——spec-review 修复：mode con/stty size 断言非 bookkeeping、dispose 后 kill(pid,0) 确认进程退出）；spec-review 3 findings 已修全）
 
 - 产出物：daemon 内 PTY 池（node-pty，只服务人类 shell 终端 pane；TUI-in-PTY 为 P2+ 扩展位）+ 每 agent 一个活动 pane（agent 活动事件流，渲染见 P0-11）；有界滚动历史、resize、渲染端 xterm.js attach、Windows ConPTY 预热处理（蓝图 §3 MVP 行）。
 - 验收：打开终端→键入→输出回传；resize 正确重绘；会话结束后 PTY 资源释放；Windows ConPTY 冒烟通过（含中文输出）。

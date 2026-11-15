@@ -498,6 +498,8 @@ registerAdapter("custom", createCustomAdapter);
 
 daemon 每终端一个环形缓冲：默认 5000 行 / 8MiB 上限（T3 铁律"server 持有 + 有界历史"，见调研 05.B）；attach 时先回放历史再续增量，客户端缓冲 512KiB 分块。超出上限丢弃最老数据并标记截断。
 
+P0-08 落地注：`@aether/terminal` 的 `bounded-history` 按字节计数（保帧边界），包级默认 256KiB（实现自选值）；上述 5000 行/8MiB 为 daemon 级默认，P0-10 挂接时经 `TerminalPoolOptions.historyCapacityBytes` 统一调参对齐。
+
 ### 7.3 渲染端协议（MVP：增量输出 + 有界历史）
 
 ```ts
