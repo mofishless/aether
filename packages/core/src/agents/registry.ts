@@ -30,3 +30,11 @@ export function createAdapter(cfg: ResolvedProviderConfig): AgentAdapter {
   }
   return factory(cfg);
 }
+
+/**
+ * kind 是否已注册（P1-01 评审 F2）：agents.spawn 显式 providerKind 入参的前置校验用
+ * （值域通过 ≠ 已注册——acp/tui 是 ProviderKind 值域内的 P2+ 占位但无适配器实现）。
+ */
+export function hasAdapter(kind: ProviderKind): boolean {
+  return factories.has(kind);
+}

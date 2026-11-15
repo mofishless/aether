@@ -1,4 +1,4 @@
-import { describe, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { ProviderEventSchema } from "../src/index.js";
 import type { ProviderEventType } from "../src/index.js";
 import { expectRejected, expectRoundTrip } from "./helpers.js";
@@ -18,6 +18,22 @@ describe("ProviderEventSchema 各成员 round-trip", () => {
   });
   it("message", () => {
     expectRoundTrip(ProviderEventSchema, { ...base, type: "message", content: "正在分析代码" });
+  });
+  it("message + kind（codex reasoning/plan 标注；P1-01 评审 F6：zod 声明键端到端保留）", () => {
+    const withKind = ProviderEventSchema.parse({
+      ...base,
+      type: "message",
+      content: "三步走",
+      kind: "plan",
+    });
+    expect(withKind).toEqual({ ...base, type: "message", content: "三步走", kind: "plan" });
+    expectRoundTrip(ProviderEventSchema, withKind);
+    // 缺省不带 kind：合法且形状不变（其他 provider 无此标注）
+    expect(ProviderEventSchema.parse({ ...base, type: "message", content: "x" })).toEqual({
+      ...base,
+      type: "message",
+      content: "x",
+    });
   });
   it("tool_use", () => {
     expectRoundTrip(ProviderEventSchema, {

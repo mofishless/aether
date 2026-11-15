@@ -26,6 +26,12 @@ export const ProviderEventSchema = z.discriminatedUnion("type", [
     ...providerEventBase,
     type: z.literal("message"),
     content: z.string(),
+    /**
+     * 消息类别标注（可选）：codex 的 reasoning/plan 归入 message 时携带
+     * （"reasoning" | "plan"）。zod 默认保留声明过的键——live/落库/重放三面一致
+     * （P1-01 评审 F6 定案）；其他 provider 缺省不带。
+     */
+    kind: z.string().optional(),
   }),
   /** 工具调用发起 */
   z.object({

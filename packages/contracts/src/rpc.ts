@@ -4,6 +4,7 @@ import type {
   AutonomyLevel,
   PermissionDecision,
   Project,
+  ProviderKind,
   Session,
   Task,
   TaskStatus,
@@ -190,6 +191,12 @@ export interface AetherRpc {
      * UI 无 profile 选择器，profile id 亦非固定值不可硬编码）。
      */
     agentProfileId?: string;
+    /**
+     * 显式 provider 路由（P1-01 评审 F2 接线）：缺省 = 所选 profile 的
+     * provider 配置行 kind。显式给定必须已在 daemon 适配器注册表内
+     * （值域通过 ≠ 已注册，如 acp/tui 为 P2+ 占位），否则 invalidParams。
+     */
+    providerKind?: ProviderKind;
     prompt: string;
     /** 'read_only' | 'workspace_write' | 'auto'（映射见 §6.2） */
     autonomy?: AutonomyLevel;

@@ -81,6 +81,6 @@ export type {
   ProviderKind,
 } from "./agents/port.js";
 export type { AdapterFactory } from "./agents/registry.js";
-export { createAdapter, registerAdapter } from "./agents/registry.js";
+export { createAdapter, hasAdapter, registerAdapter } from "./agents/registry.js";
 export { applySessionEvent, INITIAL_AGENT_STATUS } from "./agents/session-state-machine.js";
 export type { SessionTransitionResult } from "./agents/session-state-machine.js";
