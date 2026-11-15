@@ -85,4 +85,26 @@ describe.skipIf(shell === null)("pty-session：真实 PTY 生命周期", () => {
       createPtySession({ terminalId: "t-bad", file: sh.file, args: sh.args, cols: 80, rows: -2 }),
     ).toThrow(/正整数/);
   });
+
+  // CI run #10 ubuntu 回归：SIGHUP 后 onExit 迟迟不来 → dispose 1s 升级 SIGKILL。
+  // 仅 POSIX（win32 kill 无信号语义）；bash -c 非交互 + trap 忽略 HUP，制造
+  // "软信号杀不死"的确定场景，断言升级路径真实收敛（SIGKILL → exitCode null）。
+  it.skipIf(process.platform === "win32")(
+    "SIGHUP 被忽略的进程：dispose 升级 SIGKILL 仍收敛退出证明",
+    async () => {
+      const session = createPtySession({
+        terminalId: "t-sig-escalation",
+        file: "/bin/bash",
+        args: ["-c", "trap '' HUP; sleep 10"],
+        cols: 80,
+        rows: 24,
+      });
+      const startedAt = Date.now();
+      const proof = await session.dispose();
+      const elapsedMs = Date.now() - startedAt;
+      expect(elapsedMs).toBeLessThan(10_000); // 5s settle 兜底内必收敛
+      expect(proof.exitCode).toBeNull(); // SIGKILL 信号死 → null（§7.3）
+    },
+    20_000,
+  );
 });

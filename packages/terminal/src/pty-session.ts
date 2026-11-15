@@ -54,6 +54,11 @@ export interface PtySession {
 
 const DEFAULT_TERM_NAME = "xterm-256color";
 
+/** dispose 信号升级窗口：SIGHUP 后仍无退出证明则升级 SIGKILL（CI 慢机实测：run #10 ubuntu SIGHUP 后 onExit 迟迟不来） */
+const DISPOSE_SIGNAL_ESCALATION_MS = 1_000;
+/** dispose 终极兜底：仍无证明则自行 settle（exitCode null = 异常终止，§7.3）——disposeAll 不因单个坏会话卡死 */
+const DISPOSE_SETTLE_TIMEOUT_MS = 5_000;
+
 /** 严格 base64（标准字母表 + 0-2 个填充；空串合法） */
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
@@ -176,10 +181,27 @@ export function createPtySession(options: PtySpawnOptions): PtySession {
       if (!disposed) {
         disposed = true;
         try {
-          pty.kill();
+          pty.kill(); // POSIX 默认 SIGHUP / win32 TerminateProcess 族
         } catch {
           // 进程已退出时 kill 可能抛错：退出证明由 onExit/error 兜底 settle
         }
+        // 双保险（daemon 生产防御）：① 1s 后升级 SIGKILL——CI 慢机上 SIGHUP 后
+        // native onExit 可能迟迟不来（信号丢失/进程未终止）；② 5s 仍无证明则自行
+        // settle（exitCode null = 异常终止，§7.3 语义）。settle 幂等，先到的真证明胜出。
+        const escalate = setTimeout(() => {
+          try {
+            pty.kill("SIGKILL");
+          } catch {
+            // 已死：无操作
+          }
+        }, DISPOSE_SIGNAL_ESCALATION_MS);
+        const giveUp = setTimeout(() => {
+          settle({ exitCode: null, signal: null });
+        }, DISPOSE_SETTLE_TIMEOUT_MS);
+        void exited.finally(() => {
+          clearTimeout(escalate);
+          clearTimeout(giveUp);
+        });
       }
       return exited;
     },
