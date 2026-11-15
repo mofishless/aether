@@ -67,8 +67,11 @@ describe.skipIf(shell === null)("terminal-pool：PTY 会话池", () => {
     expect(exits.length).toBe(1);
     expect(TerminalExitFrameSchema.parse(exits[0])).toEqual(exits[0]);
     expect(exits[0]).toMatchObject({ type: "exit", terminalId: "tp-1" });
+    // 显式 kill 的退出码语义（§7.3，normalizeExitCode）：POSIX kill → shell 死于
+    // SIGHUP → exitCode 归一为 null（信号死）；win32 走 TerminateProcess，退出码
+    // 依 node-pty 实现不定，不做跨平台恒等断言（帧合法性已由上方 schema 覆盖）。
     if (!IS_WIN) {
-      expect(exits[0]?.exitCode).toBe(0);
+      expect(exits[0]?.exitCode).toBeNull();
     }
     offOutput();
     offExit();
