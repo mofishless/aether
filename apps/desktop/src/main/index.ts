@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain } from "electron";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { createDaemonSupervisor } from "./daemon/supervisor.js";
 import { DAEMON_ENDPOINT_CHANNEL } from "./renderer-bridge.js";
@@ -11,8 +11,16 @@ import { isTestBridgeEnabled, TEST_BRIDGE_DAEMON_STATUS_CHANNEL } from "./test-b
 // daemon 入口锚点：app path = apps/desktop（dev 与打包前形态一致），产物在姊妹包的 dist。
 const daemonEntryPath = path.resolve(app.getAppPath(), "..", "daemon", "dist", "index.js");
 
+// daemon 数据目录策略（P0-10 遗留收口）：默认 userData/aether.db（持久）；
+// env 已设 AETHER_DAEMON_DB_PATH 时让位（E2E 隔离库/开发自定义同缝注入）。
+// AETHER_AGENT_CLI_PATH / AETHER_MOCK_SCRIPT 等经 process.env 继承自动透传给 daemon。
+const daemonDbPath =
+  process.env["AETHER_DAEMON_DB_PATH"] ?? path.join(app.getPath("userData"), "aether.db");
+mkdirSync(path.dirname(daemonDbPath), { recursive: true });
+
 const supervisor = createDaemonSupervisor({
   daemonEntryPath,
+  extraSpawnEnv: { AETHER_DAEMON_DB_PATH: daemonDbPath },
   onStateChange: (status) => {
     if (status.state === "reconnecting") {
       console.error(

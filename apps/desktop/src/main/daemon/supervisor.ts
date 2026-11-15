@@ -51,6 +51,8 @@ export interface DaemonSupervisorOptions {
   readonly requestTimeoutMs?: number;
   /** 每次 spawn 的 argv，attempt 从 0 递增（故障注入测试用；缺省恒空数组） */
   readonly resolveDaemonArgs?: (attempt: number) => readonly string[];
+  /** 每次 spawn 追加注入的 daemon env（P0-11：launcher 注入 AETHER_DAEMON_DB_PATH） */
+  readonly extraSpawnEnv?: Readonly<Record<string, string>>;
   /** stop() 优雅退出宽限 ms，默认 2000 */
   readonly shutdownGraceMs?: number;
 }
@@ -111,6 +113,7 @@ export function createDaemonSupervisor(options: DaemonSupervisorOptions): Daemon
     listeningTimeoutMs,
     requestTimeoutMs,
     resolveDaemonArgs,
+    extraSpawnEnv,
     shutdownGraceMs = DEFAULT_SHUTDOWN_GRACE_MS,
   } = options;
 
@@ -200,6 +203,7 @@ export function createDaemonSupervisor(options: DaemonSupervisorOptions): Daemon
       daemonEntryPath,
       token,
       args,
+      ...(extraSpawnEnv !== undefined ? { extraEnv: extraSpawnEnv } : {}),
       ...(listeningTimeoutMs !== undefined ? { listeningTimeoutMs } : {}),
       onSpawned: (child) => {
         strayChild = child;

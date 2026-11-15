@@ -23,12 +23,32 @@ export interface DaemonSpawnOptions {
   readonly token: string;
   /** 传给 daemon 的 argv（如故障注入 flag --hang-silent / --hang-signal） */
   readonly args?: readonly string[];
+  /** 追加注入 daemon env（P0-11：launcher 注入 AETHER_DAEMON_DB_PATH；E2E 隔离库同缝覆盖） */
+  readonly extraEnv?: Readonly<Record<string, string>>;
   /** listening 行超时 ms，默认 10s */
   readonly listeningTimeoutMs?: number;
   /** spawn 一发起即回调：stop 时可立即杀掉"listening 等待中"的子进程，防孤儿 */
   readonly onSpawned?: (child: ChildProcess) => void;
   /** stderr 行级透传；缺省 console.error 前缀 [daemon] */
   readonly onStderrLine?: (line: string) => void;
+}
+
+/**
+ * 组装 daemon 子进程 env：继承父进程（AETHER_AGENT_CLI_PATH / AETHER_MOCK_SCRIPT 等
+ * E2E 注入经此透传）→ extraEnv 覆盖 → 协议保留键最后落座（token/run-as-node 不可被覆盖）。
+ * 独立纯函数便于单测锁定优先级。
+ */
+export function buildDaemonEnv(
+  baseEnv: NodeJS.ProcessEnv,
+  token: string,
+  extraEnv: Readonly<Record<string, string>>,
+): NodeJS.ProcessEnv {
+  return {
+    ...baseEnv,
+    ...extraEnv,
+    ELECTRON_RUN_AS_NODE: "1",
+    AETHER_DAEMON_TOKEN: token,
+  };
 }
 
 export interface DaemonExitInfo {
@@ -115,6 +135,7 @@ export function spawnDaemon(options: DaemonSpawnOptions): Promise<DaemonSpawnHan
   const {
     daemonEntryPath,
     token,
+    extraEnv = {},
     listeningTimeoutMs = DEFAULT_LISTENING_TIMEOUT_MS,
     onSpawned,
     onStderrLine,
@@ -122,7 +143,7 @@ export function spawnDaemon(options: DaemonSpawnOptions): Promise<DaemonSpawnHan
   const args = options.args ?? [];
 
   const child = spawn(process.execPath, [daemonEntryPath, ...args], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", AETHER_DAEMON_TOKEN: token },
+    env: buildDaemonEnv(process.env, token, extraEnv),
     stdio: ["ignore", "pipe", "pipe"],
   });
   onSpawned?.(child);
