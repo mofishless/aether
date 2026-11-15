@@ -1,0 +1,20 @@
+{
+  "name": "@aether/core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Domain core: worktree lifecycle orchestration, per-path global lock, crash recovery (SYSTEM_DESIGN §1.2/§2, P0-05).",
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aether/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
